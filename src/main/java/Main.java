@@ -1,6 +1,4 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -30,14 +28,13 @@ public class Main {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 new Thread(() -> {
-                    try (OutputStream outputStream = clientSocket.getOutputStream();
-                         InputStream inputStream = clientSocket.getInputStream()) {
+                    try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                         PrintWriter printWriter = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-                        byte[] b = new byte[1024];
-                        int cnt = inputStream.read(b);
-                        String s = new String(b);
-
-                        outputStream.write("+PONG\r\n".getBytes());
+                        String message;
+                        while ((message = bufferedReader.readLine()) != null) {
+                            printWriter.print("+PONG\r\n");
+                        }
                     } catch (Exception e) {
                         System.out.println("Exception: " + e.getMessage());
                     } finally {
