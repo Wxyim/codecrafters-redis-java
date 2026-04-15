@@ -3,6 +3,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
   public static void main(String[] args){
@@ -11,35 +13,42 @@ public class Main {
 
     //  Uncomment the code below to pass the first stage
         ServerSocket serverSocket = null;
-        Socket clientSocket = null;
         int port = 6379;
+
+        List<Socket> clients = new ArrayList<>();
+
         try {
           serverSocket = new ServerSocket(port);
           // Since the tester restarts your program quite often, setting SO_REUSEADDR
           // ensures that we don't run into 'Address already in use' errors
           serverSocket.setReuseAddress(true);
           // Wait for connection from client.
-          clientSocket = serverSocket.accept();
 
-            OutputStream outputStream = clientSocket.getOutputStream();
-            InputStream inputStream = clientSocket.getInputStream();
+
+
 
             while (true) {
-                byte[] b = new byte[1024];
-                int cnt = inputStream.read(b);
-                String s = new String(b);
-                outputStream.write("+PONG\r\n".getBytes());
+                Socket clientSocket = serverSocket.accept();
+                new Thread(() -> {
+                    try (OutputStream outputStream = clientSocket.getOutputStream();
+                         InputStream inputStream = clientSocket.getInputStream()) {
+
+                        byte[] b = new byte[1024];
+                        int cnt = inputStream.read(b);
+                        String s = new String(b);
+
+                        outputStream.write("+PONG\r\n".getBytes());
+                    } catch (Exception e) {
+                        System.out.println("Exception: " + e.getMessage());
+                    } finally {
+                    }
+
+
+                }).start();
             }
         } catch (IOException e) {
           System.out.println("IOException: " + e.getMessage());
         } finally {
-          try {
-            if (clientSocket != null) {
-              clientSocket.close();
-            }
-          } catch (IOException e) {
-            System.out.println("IOException: " + e.getMessage());
-          }
         }
   }
 }
