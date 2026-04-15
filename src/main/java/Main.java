@@ -36,7 +36,7 @@ public class Main {
                             if (message.startsWith("*")) {
                                 printWriter.print("+PONG\r\n");
                             } else {
-                                break;
+                                printWriter.flush();
                             }
                         }
                     } catch (Exception e) {
