@@ -33,7 +33,11 @@ public class Main {
 
                         String message;
                         while ((message = bufferedReader.readLine()) != null) {
-                            printWriter.print("+PONG\r\n");
+                            if (message.startsWith("*")) {
+                                printWriter.print("+PONG\r\n");
+                            } else {
+                                break;
+                            }
                         }
                     } catch (Exception e) {
                         System.out.println("Exception: " + e.getMessage());
