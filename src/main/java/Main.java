@@ -46,8 +46,10 @@ public class Main {
                                     for (int i = 0; i < aa.size(); i++) {
                                         if (aa.get(i).equals("PING")) {
                                             printWriter.print("+PONG" + "\r\n");
+                                            printWriter.flush();
                                         } else if (aa.get(i).equals("ECHO")) {
-                                            printWriter.print("$" + aa.get(i).length() + "\r\n" + aa.get(i + 1) + "\r\n");
+                                            printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
