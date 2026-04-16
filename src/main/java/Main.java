@@ -34,7 +34,8 @@ public class Main {
                         String message;
                         while ((message = bufferedReader.readLine()) != null) {
                             if (message.startsWith("*")) {
-                                printWriter.print("+PONG\r\n");
+                                message = message.split("\r\n")[1];
+                                printWriter.print("+" + message + "\r\n");
                             } else {
                                 printWriter.flush();
                             }
