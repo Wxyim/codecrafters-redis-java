@@ -36,10 +36,19 @@ public class Main {
                             if (message.startsWith("*")) {
                                 int length = Integer.parseInt(message.substring(1));
                                 if (length > 0) {
-                                    String msg = bufferedReader.readLine();
-                                    if (msg.contains("ECHO")) {
-                                        msg = msg.split(" ")[1];
-                                        printWriter.print("$" + msg.length() + "\r\n" + msg + "\r\n");
+                                    List<String> aa = new ArrayList<>();
+                                    for (int i = 0; i < length; i++) {
+                                        int l = Integer.parseInt(bufferedReader.readLine().substring(1));
+                                        String m = bufferedReader.readLine();
+                                        aa.add(m);
+                                    }
+
+                                    for (int i = 0; i < aa.size(); i++) {
+                                        if (aa.get(i).equals("PING")) {
+                                            printWriter.print("+PONG" + "\r\n");
+                                        } else if (aa.get(i).equals("ECHO")) {
+                                            printWriter.print("$" + aa.get(i).length() + "\r\n" + aa.get(i + 1) + "\r\n");
+                                        }
                                     }
                                 } else {
                                     printWriter.flush();
