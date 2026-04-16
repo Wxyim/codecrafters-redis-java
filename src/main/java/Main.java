@@ -60,6 +60,9 @@ public class Main {
                                             if (map.containsKey(aa.get(i + 1))) {
                                                 printWriter.print("$" + map.get(aa.get(i + 1)).length() + "\r\n" + map.get(aa.get(i + 1)) + "\r\n");
                                                 printWriter.flush();
+                                            } else {
+                                                printWriter.print("$-1\r\n");
+                                                printWriter.flush();
                                             }
                                         }
                                     }
