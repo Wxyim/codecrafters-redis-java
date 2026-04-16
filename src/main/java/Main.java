@@ -2,7 +2,9 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Main {
   public static void main(String[] args){
@@ -22,7 +24,7 @@ public class Main {
           serverSocket.setReuseAddress(true);
           // Wait for connection from client.
 
-
+          Map<String, String> map = new HashMap<>();
 
 
             while (true) {
@@ -50,6 +52,15 @@ public class Main {
                                         } else if (aa.get(i).equals("ECHO")) {
                                             printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equals("SET")) {
+                                            map.put(aa.get(i + 1), aa.get(i + 2));
+                                            printWriter.print("+OK" + "\r\n");
+                                            printWriter.flush();
+                                        } else if (aa.get(i).equals("GET")) {
+                                            if (map.containsKey(aa.get(i + 1))) {
+                                                printWriter.print("$" + map.get(aa.get(i + 1)).length() + "\r\n" + map.get(aa.get(i + 1)) + "\r\n");
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
