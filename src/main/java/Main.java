@@ -34,14 +34,19 @@ public class Main {
                         String message;
                         while ((message = bufferedReader.readLine()) != null) {
                             if (message.startsWith("*")) {
-                                if (message.contains("ECHO")) {
-                                    message = message.split("\r\n")[1].split(" ")[1];
-                                    printWriter.print("+" + message + "\r\n");
+                                int length = Integer.parseInt(message.substring(1));
+                                if (length > 0) {
+                                    String msg = bufferedReader.readLine();
+                                    if (msg.contains("ECHO")) {
+                                        msg = msg.split(" ")[1];
+                                        printWriter.print("$" + msg.length() + "\r\n" + msg + "\r\n");
+                                    }
                                 } else {
                                     printWriter.flush();
                                 }
 
                             } else {
+                                printWriter.flush();
                             }
                         }
                     } catch (Exception e) {
