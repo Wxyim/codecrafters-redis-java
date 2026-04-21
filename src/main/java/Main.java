@@ -42,6 +42,7 @@ public class Main {
                             if (message.startsWith("*")) {
                                 int length = Integer.parseInt(message.substring(1));
                                 if (length > 0) {
+                                    int size = 0;
                                     List<String> aa = new ArrayList<>();
                                     for (int i = 0; i < length; i++) {
                                         int l = Integer.parseInt(bufferedReader.readLine().substring(1));
@@ -49,6 +50,7 @@ public class Main {
                                             aa.add(null);
                                             continue;
                                         }
+                                        size = l;
                                         String m = bufferedReader.readLine();
                                         aa.add(m);
                                     }
@@ -94,12 +96,16 @@ public class Main {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             if (tmpList == null) {
                                                 tmpList = new CopyOnWriteArrayList<>();
-                                                tmpList.add(aa.get(i + 2));
+                                                for (int j = i + 2; j < size - 2; j++) {
+                                                    tmpList.add(aa.get(j));
+                                                }
                                                 mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                tmpList.add(aa.get(i + 2));
+                                                for (int j = i + 2; j < size - 2; j++) {
+                                                    tmpList.add(aa.get(j));
+                                                }
                                                 mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
