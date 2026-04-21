@@ -1,10 +1,8 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Main {
   public static void main(String[] args){
@@ -24,8 +22,9 @@ public class Main {
           serverSocket.setReuseAddress(true);
           // Wait for connection from client.
 
-          Map<String, String> map = new HashMap<>();
+          Map<String, String> map = new ConcurrentHashMap<>();
 
+          Map<String, Date> mapTime = new ConcurrentHashMap<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -41,6 +40,10 @@ public class Main {
                                     List<String> aa = new ArrayList<>();
                                     for (int i = 0; i < length; i++) {
                                         int l = Integer.parseInt(bufferedReader.readLine().substring(1));
+                                        if (l == -1) {
+                                            aa.add(null);
+                                            continue;
+                                        }
                                         String m = bufferedReader.readLine();
                                         aa.add(m);
                                     }
@@ -53,13 +56,31 @@ public class Main {
                                             printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("SET")) {
+                                            if (i + 3 < aa.size()
+                                                    && (aa.get(i + 3).equalsIgnoreCase("px")
+                                                    || aa.get(i + 3).equalsIgnoreCase("ex"))) {
+                                                Date date = aa.get(i + 3).equalsIgnoreCase("px")
+                                                        ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
+                                                        : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
+                                                mapTime.put(aa.get(i + 1), date);
+                                            }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
-                                            if (map.containsKey(aa.get(i + 1))) {
+                                            if (map.containsKey(aa.get(i + 1)) && !mapTime.containsKey(aa.get(i + 1))) {
                                                 printWriter.print("$" + map.get(aa.get(i + 1)).length() + "\r\n" + map.get(aa.get(i + 1)) + "\r\n");
                                                 printWriter.flush();
+                                            } else if (map.containsKey(aa.get(i + 1)) && mapTime.containsKey(aa.get(i + 1))) {
+                                                if (mapTime.get(aa.get(i + 1)).before(new Date())) {
+                                                    printWriter.print("$-1\r\n");
+                                                    printWriter.flush();
+                                                    map.remove(aa.get(i + 1));
+                                                    mapTime.remove(aa.get(i + 1));
+                                                } else {
+                                                    printWriter.print("$" + map.get(aa.get(i + 1)).length() + "\r\n" + map.get(aa.get(i + 1)) + "\r\n");
+                                                    printWriter.flush();
+                                                }
                                             } else {
                                                 printWriter.print("$-1\r\n");
                                                 printWriter.flush();
