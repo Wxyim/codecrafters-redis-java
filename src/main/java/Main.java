@@ -96,14 +96,14 @@ public class Main {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             if (tmpList == null) {
                                                 tmpList = new CopyOnWriteArrayList<>();
-                                                for (int j = i + 2; j < size - 2; j++) {
+                                                for (int j = i + 2; j < size; j++) {
                                                     tmpList.add(aa.get(j));
                                                 }
                                                 mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                for (int j = i + 2; j < size - 2; j++) {
+                                                for (int j = i + 2; j < size; j++) {
                                                     tmpList.add(aa.get(j));
                                                 }
                                                 mapList.put(aa.get(i + 1), tmpList);
