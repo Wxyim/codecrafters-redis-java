@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Main {
   public static void main(String[] args){
@@ -25,6 +26,10 @@ public class Main {
           Map<String, String> map = new ConcurrentHashMap<>();
 
           Map<String, Date> mapTime = new ConcurrentHashMap<>();
+
+          List<String> list = Collections.synchronizedList(new ArrayList<>());
+
+          Map<String, CopyOnWriteArrayList<String>> mapList = new ConcurrentHashMap<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -83,6 +88,20 @@ public class Main {
                                                 }
                                             } else {
                                                 printWriter.print("$-1\r\n");
+                                                printWriter.flush();
+                                            }
+                                        } else if (aa.get(i).equals("RPUSH")) {
+                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                            if (tmpList == null) {
+                                                tmpList = new CopyOnWriteArrayList<>();
+                                                tmpList.add(aa.get(i + 2));
+                                                mapList.put(aa.get(i + 1), tmpList);
+                                                printWriter.print(":" + tmpList.size() + "\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                tmpList.add(aa.get(i + 2));
+                                                mapList.put(aa.get(i + 1), tmpList);
+                                                printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
                                         }
