@@ -37,7 +37,7 @@ public class Main {
 
           Lock lock = new ReentrantLock(true);
 
-          Condition conditionMet = lock.newCondition();
+          Map<String, Condition> condList = new ConcurrentHashMap<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -99,6 +99,7 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("RPUSH")) {
+                                            Condition conditionMet = condList.get(aa.get(i + 1));
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             if (tmpList == null) {
                                                 tmpList = new CopyOnWriteArrayList<>();
@@ -116,7 +117,9 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
-                                            conditionMet.signal();
+                                            if (conditionMet != null) {
+                                                conditionMet.signal();
+                                            }
                                         } else if (aa.get(i).equals("LRANGE")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             int f = Integer.parseInt(aa.get(i + 2));
@@ -142,6 +145,7 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("LPUSH")) {
+                                            Condition conditionMet = condList.get(aa.get(i + 1));
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             if (tmpList == null) {
                                                 tmpList = new CopyOnWriteArrayList<>();
@@ -159,7 +163,9 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
-                                            conditionMet.signal();
+                                            if (conditionMet != null) {
+                                                conditionMet.signal();
+                                            }
                                         } else if (aa.get(i).equals("LLEN")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             if (tmpList == null) {
@@ -193,6 +199,8 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("BLPOP")) {
+                                            Condition conditionMet = lock.newCondition();
+                                            condList.put(aa.get(i + 1), conditionMet);
                                             lock.lock();
                                             CopyOnWriteArrayList<String> tmpList = null;
                                             int btSec = length == 3 ? Integer.parseInt(aa.get(i + 2)) : 0;
