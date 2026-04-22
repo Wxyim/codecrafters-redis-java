@@ -215,7 +215,7 @@ public class Main {
                                                 }
 
                                                 if (btSec > 0 && !result) {
-                                                    printWriter.print("$-1\r\n");
+                                                    printWriter.print("*-1\r\n");
                                                     printWriter.flush();
                                                 } else {
                                                     tmpList = mapList.getOrDefault(aa.get(i + 1), null);
