@@ -324,12 +324,14 @@ public class Main {
                                                 long t = en.contains("-") ? Long.parseLong(en.substring(0, en.lastIndexOf("-"))) : Long.parseLong(en);
                                                 long ti = en.contains("-") ? Long.parseLong(en.substring(en.lastIndexOf("-") + 1)) : Long.MAX_VALUE;
                                                 CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
-                                                for (int x = 0; i < tmpList.size(); x++) {
+                                                for (int x = 0; x < tmpList.size(); x++) {
                                                     String idString = String.valueOf(tmpList.get(x).get("id"));
                                                     long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
                                                     long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
 
-                                                    if (ids >= f && suffs >= fi && ids <= t && suffs <= ti) {
+                                                    boolean isAfterStart = (ids > f) || (ids == f && suffs >= fi);
+                                                    boolean isBeforeEnd = (ids < t) || (ids == t && suffs <= ti);
+                                                    if (isAfterStart && isBeforeEnd) {
                                                         resList.add(tmpList.get(x));
                                                     }
                                                 }
@@ -340,7 +342,7 @@ public class Main {
                                                     printWriter.print("*" + (tm.size() - 1) * 2 + "\r\n");
                                                     for (Map.Entry<String, Object> entry : tm.entrySet()) {
                                                         if (!entry.getKey().equals("id")) {
-                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey());
+                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
                                                             printWriter.print("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
                                                         }
                                                     }
