@@ -446,12 +446,12 @@ public class Main {
                                                         Condition conditionMet = condList.computeIfAbsent(key, k -> streamlock.newCondition());
                                                         boolean flag = false;
 
+                                                        CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
                                                         while (!flag && timeOut == 0) {
                                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> ma = streamMap.getOrDefault(key, new CopyOnWriteArrayList<>());
                                                             if (ma.isEmpty()) {
                                                                 conditionMet.await();
                                                             } else {
-                                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
                                                                 for (int x = 0; x < ma.size(); x++) {
                                                                     String idString = String.valueOf(ma.get(x).get("id"));
                                                                     long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
@@ -493,7 +493,6 @@ public class Main {
                                                             if (ma.isEmpty()) {
                                                                 b = conditionMet.awaitUntil(line);
                                                             } else {
-                                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
                                                                 for (int x = 0; x < ma.size(); x++) {
                                                                     String idString = String.valueOf(ma.get(x).get("id"));
                                                                     long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
