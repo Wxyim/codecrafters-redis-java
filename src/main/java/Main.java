@@ -2,9 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,7 +37,7 @@ public class Main {
 
           Map<String, Condition> condList = new ConcurrentHashMap<>();
 
-          Map<String, Map<String, Object>> streamMap = new ConcurrentHashMap<>();
+          Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -236,19 +234,45 @@ public class Main {
                                             }
                                         } else if (aa.get(i).equals("XADD")) {
                                             String key = aa.get(i + 1);
-                                            Map<String, Object> tmpMap = streamMap.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
-                                            if (!tmpMap.isEmpty()) {
-                                                tmpMap.clear();
-                                            }
-                                            for (int j = i + 1; j < length; j += 2) {
-                                                if (j == i + 1) {
-                                                    tmpMap.put("id", aa.get(j + 1));
-                                                } else {
-                                                    tmpMap.put(aa.get(j), aa.get(j + 1));
+                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>());
+                                            if (tmpList.isEmpty()) {
+                                                ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
+                                                for (int j = i + 1; j < length; j += 2) {
+                                                    if (j == i + 1) {
+                                                        m.put("id", aa.get(j + 1));
+                                                    } else {
+                                                        m.put(aa.get(j), aa.get(j + 1));
+                                                    }
                                                 }
+                                                tmpList.add(m);
+                                                printWriter.print("$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                printWriter.flush();
+
+                                            } else {
+                                                ConcurrentHashMap<String, Object> last = tmpList.getLast();
+                                                String id = (String) last.get("id");
+                                                if (aa.get(i + 2).equals("0-0")) {
+                                                    printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
+                                                    printWriter.flush();
+                                                } else if (aa.get(i + 2).compareTo(id) < 0) {
+                                                    printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
+                                                    printWriter.flush();
+                                                } else {
+                                                    ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
+                                                    for (int j = i + 1; j < length; j += 2) {
+                                                        if (j == i + 1) {
+                                                            m.put("id", aa.get(j + 1));
+                                                        } else {
+                                                            m.put(aa.get(j), aa.get(j + 1));
+                                                        }
+                                                    }
+                                                    tmpList.add(m);
+                                                    printWriter.print("$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                    printWriter.flush();
+                                                }
+
                                             }
-                                            printWriter.print("$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
-                                            printWriter.flush();
+
                                         }
                                     }
                                 } else {
