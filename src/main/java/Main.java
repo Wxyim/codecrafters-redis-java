@@ -39,6 +39,8 @@ public class Main {
 
           Map<String, Condition> condList = new ConcurrentHashMap<>();
 
+          Map<String, Map<String, Object>> streamMap = new ConcurrentHashMap<>();
+
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 new Thread(() -> {
@@ -222,14 +224,31 @@ public class Main {
                                             }
                                         } else if (aa.get(i).equals("TYPE")) {
                                             String key = aa.get(i + 1);
-                                            if (!map.containsKey(key)) {
-                                                printWriter.print("+none\r\n");
-                                                printWriter.flush();
-                                            } else {
-                                                String obj = map.get(key);
+                                            if (map.containsKey(key)) {
                                                 printWriter.print("+string\r\n");
                                                 printWriter.flush();
+                                            } else if (streamMap.containsKey(key)) {
+                                                printWriter.print("+stream\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                printWriter.print("+none\r\n");
+                                                printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("XADD")) {
+                                            String key = aa.get(i + 1);
+                                            Map<String, Object> tmpMap = streamMap.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
+                                            if (!tmpMap.isEmpty()) {
+                                                tmpMap.clear();
+                                            }
+                                            for (int j = i + 1; j < length; j += 2) {
+                                                if (j == i + 1) {
+                                                    tmpMap.put("id", aa.get(j + 1));
+                                                } else {
+                                                    tmpMap.put(aa.get(j), aa.get(j + 1));
+                                                }
+                                            }
+                                            printWriter.print("$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
