@@ -282,7 +282,12 @@ public class Main {
                                                         newId = newPre + "-0";
                                                     }
                                                 } else if (newId.startsWith("*")) {
-                                                    newId = System.currentTimeMillis() + "-0";
+                                                    long mill = System.currentTimeMillis();
+                                                    if (lastPre.equals(String.valueOf(mill))) {
+                                                        newId = lastPre + "-" + (lastSuff + 1);
+                                                    } else {
+                                                        newId = mill + "-0";
+                                                    }
                                                 }
                                                 if (newId.equals("0-0")) {
                                                     printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
@@ -305,7 +310,37 @@ public class Main {
                                                 }
 
                                             }
-
+                                        } else if (aa.get(i).equals("XRANGE")) {
+                                            String key = aa.get(i + 1);
+                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
+                                            if (tmpList == null || tmpList.isEmpty()) {
+                                                printWriter.print("*0\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                long f = Long.parseLong(aa.get(i + 2));
+                                                long t = Long.parseLong(aa.get(i + 3));
+                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
+                                                for (int x = 0; i < tmpList.size(); x++) {
+                                                    String idString = String.valueOf(tmpList.get(x).get("id"));
+                                                    long ts = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+                                                    if (ts >= f && ts <= t) {
+                                                        resList.add(tmpList.get(x));
+                                                    }
+                                                }
+                                                printWriter.print("*" + resList.size() + "\r\n");
+                                                for (ConcurrentHashMap<String, Object> tm : resList) {
+                                                    printWriter.print("*2\r\n");
+                                                    printWriter.print("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                    printWriter.print("*" + (tm.size() - 1) + "\r\n");
+                                                    for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                        if (!entry.getKey().equals("id")) {
+                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey());
+                                                            printWriter.print("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                        }
+                                                    }
+                                                }
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
