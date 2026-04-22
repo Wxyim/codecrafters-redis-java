@@ -132,6 +132,24 @@ public class Main {
                                                 }
                                                 printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("LPUSH")) {
+                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                            if (tmpList == null) {
+                                                tmpList = new CopyOnWriteArrayList<>();
+                                                for (int j = i + 2; j < length; j++) {
+                                                    tmpList.addFirst(aa.get(j));
+                                                }
+                                                mapList.put(aa.get(i + 1), tmpList);
+                                                printWriter.print(":" + tmpList.size() + "\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                for (int j = i + 2; j < length; j++) {
+                                                    tmpList.addFirst(aa.get(j));
+                                                }
+                                                mapList.put(aa.get(i + 1), tmpList);
+                                                printWriter.print(":" + tmpList.size() + "\r\n");
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
