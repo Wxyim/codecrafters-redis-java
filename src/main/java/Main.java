@@ -531,7 +531,8 @@ public class Main {
                                                             }
                                                         }
 
-                                                        if (timeOut > 0 && !b) {
+                                                        if (n == 1 && timeOut > 0 && !b) {
+                                                            sb.delete(0, sb.length());
                                                             sb.append("*2\r\n");
                                                             sb.append("$" + key.length() + "\r\n" + key + "\r\n");
                                                             sb.append("*-1\r\n");
