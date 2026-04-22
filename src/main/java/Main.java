@@ -254,7 +254,7 @@ public class Main {
                                                 if (aa.get(i + 2).equals("0-0")) {
                                                     printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
                                                     printWriter.flush();
-                                                } else if (aa.get(i + 2).compareTo(id) < 0) {
+                                                } else if (aa.get(i + 2).compareTo(id) <= 0) {
                                                     printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
                                                     printWriter.flush();
                                                 } else {
