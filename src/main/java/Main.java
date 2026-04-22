@@ -35,6 +35,8 @@ public class Main {
 
           Lock lock = new ReentrantLock(true);
 
+          Lock streamlock = new ReentrantLock(true);
+
           Map<String, Condition> condList = new ConcurrentHashMap<>();
 
           Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
@@ -234,72 +236,27 @@ public class Main {
                                             }
                                         } else if (aa.get(i).equals("XADD")) {
                                             String key = aa.get(i + 1);
-                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>());
-                                            if (tmpList.isEmpty()) {
-                                                ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
-                                                for (int j = i + 1; j < length; j += 2) {
-                                                    if (j == i + 1) {
-                                                        if (aa.get(j + 1).endsWith("-*")) {
-                                                            String newPre = aa.get(j + 1).substring(0, aa.get(j + 1).length() - 2);
-                                                            if (newPre.equals("0")) {
-                                                                m.put("id", newPre + "-1");
-                                                            } else {
-                                                                m.put("id", newPre + "-0");
-                                                            }
+                                            streamlock.lock();
 
-                                                        } else if (aa.get(j + 1).startsWith("*")) {
-                                                            m.put("id", System.currentTimeMillis() + "-0");
-                                                        } else {
-                                                            m.put("id", aa.get(j + 1));
-                                                        }
-                                                    } else {
-                                                        m.put(aa.get(j), aa.get(j + 1));
-                                                    }
-                                                }
-                                                tmpList.add(m);
-                                                printWriter.print("$" + String.valueOf(m.get("id")).length() + "\r\n" + m.get("id") + "\r\n");
-                                                printWriter.flush();
-
-                                            } else {
-                                                ConcurrentHashMap<String, Object> last = tmpList.getLast();
-                                                String lastId = (String) last.get("id");
-                                                String lastPre = lastId.substring(0, lastId.lastIndexOf("-"));
-                                                int lastSuff = Integer.parseInt(lastId.substring(lastId.lastIndexOf("-") + 1));
-
-                                                String newId = aa.get(i + 2);
-                                                String newPre = newId.substring(0, lastId.lastIndexOf("-"));
-                                                int newSuff = 0;
-
-                                                if (newId.endsWith("-*")) {
-                                                    if (lastPre.equals(newPre)) {
-                                                        newSuff = lastSuff + 1;
-                                                        newId = newPre + "-" + newSuff;
-                                                    } else if (newPre.compareTo(lastPre) < 0) {
-                                                        printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
-                                                        printWriter.flush();
-                                                        continue;
-                                                    } else {
-                                                        newId = newPre + "-0";
-                                                    }
-                                                } else if (newId.startsWith("*")) {
-                                                    long mill = System.currentTimeMillis();
-                                                    if (lastPre.equals(String.valueOf(mill))) {
-                                                        newId = lastPre + "-" + (lastSuff + 1);
-                                                    } else {
-                                                        newId = mill + "-0";
-                                                    }
-                                                }
-                                                if (newId.equals("0-0")) {
-                                                    printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
-                                                    printWriter.flush();
-                                                } else if (newId.compareTo(lastId) <= 0) {
-                                                    printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
-                                                    printWriter.flush();
-                                                } else {
+                                            try {
+                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>());
+                                                if (tmpList.isEmpty()) {
                                                     ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
                                                     for (int j = i + 1; j < length; j += 2) {
                                                         if (j == i + 1) {
-                                                            m.put("id", newId);
+                                                            if (aa.get(j + 1).endsWith("-*")) {
+                                                                String newPre = aa.get(j + 1).substring(0, aa.get(j + 1).length() - 2);
+                                                                if (newPre.equals("0")) {
+                                                                    m.put("id", newPre + "-1");
+                                                                } else {
+                                                                    m.put("id", newPre + "-0");
+                                                                }
+
+                                                            } else if (aa.get(j + 1).startsWith("*")) {
+                                                                m.put("id", System.currentTimeMillis() + "-0");
+                                                            } else {
+                                                                m.put("id", aa.get(j + 1));
+                                                            }
                                                         } else {
                                                             m.put(aa.get(j), aa.get(j + 1));
                                                         }
@@ -307,9 +264,65 @@ public class Main {
                                                     tmpList.add(m);
                                                     printWriter.print("$" + String.valueOf(m.get("id")).length() + "\r\n" + m.get("id") + "\r\n");
                                                     printWriter.flush();
-                                                }
 
+                                                } else {
+                                                    ConcurrentHashMap<String, Object> last = tmpList.getLast();
+                                                    String lastId = (String) last.get("id");
+                                                    String lastPre = lastId.substring(0, lastId.lastIndexOf("-"));
+                                                    int lastSuff = Integer.parseInt(lastId.substring(lastId.lastIndexOf("-") + 1));
+
+                                                    String newId = aa.get(i + 2);
+                                                    String newPre = newId.substring(0, lastId.lastIndexOf("-"));
+                                                    int newSuff = 0;
+
+                                                    if (newId.endsWith("-*")) {
+                                                        if (lastPre.equals(newPre)) {
+                                                            newSuff = lastSuff + 1;
+                                                            newId = newPre + "-" + newSuff;
+                                                        } else if (newPre.compareTo(lastPre) < 0) {
+                                                            printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
+                                                            printWriter.flush();
+                                                            continue;
+                                                        } else {
+                                                            newId = newPre + "-0";
+                                                        }
+                                                    } else if (newId.startsWith("*")) {
+                                                        long mill = System.currentTimeMillis();
+                                                        if (lastPre.equals(String.valueOf(mill))) {
+                                                            newId = lastPre + "-" + (lastSuff + 1);
+                                                        } else {
+                                                            newId = mill + "-0";
+                                                        }
+                                                    }
+                                                    if (newId.equals("0-0")) {
+                                                        printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
+                                                        printWriter.flush();
+                                                    } else if (newId.compareTo(lastId) <= 0) {
+                                                        printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
+                                                        printWriter.flush();
+                                                    } else {
+                                                        ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
+                                                        for (int j = i + 1; j < length; j += 2) {
+                                                            if (j == i + 1) {
+                                                                m.put("id", newId);
+                                                            } else {
+                                                                m.put(aa.get(j), aa.get(j + 1));
+                                                            }
+                                                        }
+                                                        tmpList.add(m);
+                                                        printWriter.print("$" + String.valueOf(m.get("id")).length() + "\r\n" + m.get("id") + "\r\n");
+                                                        printWriter.flush();
+                                                    }
+
+                                                }
+                                                Condition conditionMet = condList.get(key);
+                                                if (conditionMet != null) {
+                                                    conditionMet.signalAll();
+                                                }
+                                            } finally {
+                                                streamlock.unlock();
                                             }
+                                            
                                         } else if (aa.get(i).equals("XRANGE")) {
                                             String key = aa.get(i + 1);
                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
@@ -360,97 +373,135 @@ public class Main {
                                             }
                                         } else if (aa.get(i).equals("XREAD")) {
                                             String type = aa.get(i + 1);
-                                            if (!type.equalsIgnoreCase("STREAMS")) {
-                                                continue;
-                                            }
+                                            if (type.equalsIgnoreCase("STREAMS")) {
+                                                int n = (length - 2) / 2;
 
-                                            int n = (length - 2) / 2;
+                                                StringBuffer sb = new StringBuffer();
+                                                sb.append("*" + n + "\r\n");
 
-                                            StringBuffer sb = new StringBuffer();
-                                            sb.append("*" + n + "\r\n");
+                                                for (int e = 0; e < n; e++) {
+                                                    String key = aa.get(i + 2 + e);
+                                                    String st = aa.get(i + 2 + e + n);
+                                                    long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+                                                    long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
 
-                                            for (int e = 0; e < n; e++) {
-                                                String key = aa.get(i + 2 + e);
-                                                String st = aa.get(i + 2 + e + n);
-                                                long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
-                                                long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
-
-                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
-                                                if (tmpList == null || tmpList.isEmpty()) {
-                                                    sb.append("*2\r\n");
-                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
-                                                    sb.append("*0\r\n");
-                                                } else {
-                                                    CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
-                                                    for (int x = 0; x < tmpList.size(); x++) {
-                                                        String idString = String.valueOf(tmpList.get(x).get("id"));
-                                                        long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
-                                                        long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
-
-                                                        boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
-                                                        if (isAfterStart) {
-                                                            resList.add(tmpList.get(x));
-                                                        }
-                                                    }
-                                                    sb.append("*2\r\n");
-                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
-                                                    sb.append("*" + resList.size() + "\r\n");
-                                                    for (ConcurrentHashMap<String, Object> tm : resList) {
+                                                    CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
+                                                    if (tmpList == null || tmpList.isEmpty()) {
                                                         sb.append("*2\r\n");
-                                                        sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
-                                                        sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
-                                                        for (Map.Entry<String, Object> entry : tm.entrySet()) {
-                                                            if (!entry.getKey().equals("id")) {
-                                                                sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
-                                                                sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                        sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                        sb.append("*-1\r\n");
+                                                    } else {
+                                                        CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
+                                                        for (int x = 0; x < tmpList.size(); x++) {
+                                                            String idString = String.valueOf(tmpList.get(x).get("id"));
+                                                            long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+                                                            long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+
+                                                            boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
+                                                            if (isAfterStart) {
+                                                                resList.add(tmpList.get(x));
                                                             }
                                                         }
+                                                        sb.append("*2\r\n");
+                                                        sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                        sb.append("*" + resList.size() + "\r\n");
+                                                        for (ConcurrentHashMap<String, Object> tm : resList) {
+                                                            sb.append("*2\r\n");
+                                                            sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                            sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                            for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                                if (!entry.getKey().equals("id")) {
+                                                                    sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                    sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                                }
+                                                            }
+                                                        }
+
                                                     }
 
                                                 }
 
+                                                printWriter.print(sb);
+                                                printWriter.flush();
+                                            } else if (type.equalsIgnoreCase("BLOCK")) {
+                                                long timeOut = Long.parseLong(aa.get(i + 2));
+                                                String type2 = aa.get(i + 3);
+                                                if (!type2.equalsIgnoreCase("STREAMS")) {
+                                                    continue;
+                                                }
+
+                                                streamlock.lock();
+
+                                                try {
+                                                    int n = (length - 4) / 2;
+
+                                                    StringBuffer sb = new StringBuffer();
+                                                    sb.append("*" + n + "\r\n");
+
+                                                    for (int e = 0; e < n; e++) {
+                                                        String key = aa.get(i + 4 + e);
+                                                        String st = aa.get(i + 4 + e + n);
+                                                        long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+                                                        long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+                                                        Condition conditionMet = condList.computeIfAbsent(key, k -> lock.newCondition());
+                                                        boolean res = false;
+                                                        while (streamMap.getOrDefault(key,null) == null) {
+                                                            res = conditionMet.await(timeOut, TimeUnit.MILLISECONDS);
+                                                        }
+
+                                                        if (!res) {
+                                                            sb.append("*2\r\n");
+                                                            sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                            sb.append("*-1\r\n");
+                                                            continue;
+                                                        }
+
+
+                                                        CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
+                                                        if (tmpList == null || tmpList.isEmpty()) {
+                                                            sb.append("*2\r\n");
+                                                            sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                            sb.append("*-1\r\n");
+                                                        } else {
+                                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
+                                                            for (int x = 0; x < tmpList.size(); x++) {
+                                                                String idString = String.valueOf(tmpList.get(x).get("id"));
+                                                                long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+                                                                long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+
+                                                                boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
+                                                                if (isAfterStart) {
+                                                                    resList.add(tmpList.get(x));
+                                                                }
+                                                            }
+                                                            sb.append("*2\r\n");
+                                                            sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                            sb.append("*" + resList.size() + "\r\n");
+                                                            for (ConcurrentHashMap<String, Object> tm : resList) {
+                                                                sb.append("*2\r\n");
+                                                                sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                                sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                                for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                                    if (!entry.getKey().equals("id")) {
+                                                                        sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                        sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                                    }
+                                                                }
+                                                            }
+
+                                                        }
+
+                                                    }
+
+                                                    printWriter.print(sb);
+                                                    printWriter.flush();
+                                                } finally {
+                                                    streamlock.unlock();
+                                                }
+
                                             }
 
-                                            printWriter.print(sb.toString());
-                                            printWriter.flush();
 
-//                                            String key = aa.get(i + 2);
-//                                            String st = aa.get(i + 3);
-//                                            long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
-//                                            long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
-//
-//                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
-//                                            if (tmpList == null || tmpList.isEmpty()) {
-//                                                printWriter.print("*0\r\n");
-//                                            } else {
-//                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
-//                                                for (int x = 0; x < tmpList.size(); x++) {
-//                                                    String idString = String.valueOf(tmpList.get(x).get("id"));
-//                                                    long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
-//                                                    long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
-//
-//                                                    boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
-//                                                    if (isAfterStart) {
-//                                                        resList.add(tmpList.get(x));
-//                                                    }
-//                                                }
-//                                                printWriter.print("*1\r\n");
-//                                                printWriter.print("*2\r\n");
-//                                                printWriter.print("$" + key.length() + "\r\n" + key + "\r\n");
-//                                                printWriter.print("*" + resList.size() + "\r\n");
-//                                                for (ConcurrentHashMap<String, Object> tm : resList) {
-//                                                    printWriter.print("*2\r\n");
-//                                                    printWriter.print("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
-//                                                    printWriter.print("*" + (tm.size() - 1) * 2 + "\r\n");
-//                                                    for (Map.Entry<String, Object> entry : tm.entrySet()) {
-//                                                        if (!entry.getKey().equals("id")) {
-//                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
-//                                                            printWriter.print("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
-//                                                        }
-//                                                    }
-//                                                }
-//                                                printWriter.flush();
-//                                            }
                                         }
                                     }
                                 } else {
