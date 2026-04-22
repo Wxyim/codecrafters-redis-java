@@ -337,7 +337,7 @@ public class Main {
                                                 for (ConcurrentHashMap<String, Object> tm : resList) {
                                                     printWriter.print("*2\r\n");
                                                     printWriter.print("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
-                                                    printWriter.print("*" + (tm.size() - 1) + "\r\n");
+                                                    printWriter.print("*" + (tm.size() - 1) * 2 + "\r\n");
                                                     for (Map.Entry<String, Object> entry : tm.entrySet()) {
                                                         if (!entry.getKey().equals("id")) {
                                                             printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey());
