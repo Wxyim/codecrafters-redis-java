@@ -159,6 +159,17 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("LPOP")) {
+                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                            if (tmpList == null || tmpList.isEmpty()) {
+                                                printWriter.print("$-1\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                String s = tmpList.removeFirst();
+                                                mapList.put(aa.get(i + 1), tmpList);
+                                                printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
