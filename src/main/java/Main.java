@@ -322,7 +322,7 @@ public class Main {
                                             } finally {
                                                 streamlock.unlock();
                                             }
-                                            
+
                                         } else if (aa.get(i).equals("XRANGE")) {
                                             String key = aa.get(i + 1);
                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
@@ -443,9 +443,9 @@ public class Main {
                                                         String st = aa.get(i + 4 + e + n);
                                                         long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
                                                         long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
-                                                        Condition conditionMet = condList.computeIfAbsent(key, k -> lock.newCondition());
+                                                        Condition conditionMet = condList.computeIfAbsent(key, k -> streamlock.newCondition());
                                                         boolean res = false;
-                                                        while (streamMap.getOrDefault(key,null) == null) {
+                                                        while (streamMap.getOrDefault(key,new CopyOnWriteArrayList<>()).isEmpty()) {
                                                             res = conditionMet.await(timeOut, TimeUnit.MILLISECONDS);
                                                         }
 
