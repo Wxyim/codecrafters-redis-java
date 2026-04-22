@@ -114,7 +114,7 @@ public class Main {
                                                 printWriter.print("*0\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                List<String> tmpList2 = tmpList.subList(i + 2, i + 3);
+                                                List<String> tmpList2 = tmpList.subList(Integer.parseInt(aa.get(i + 2)), Integer.parseInt(aa.get(i + 3)) + 1);
                                                 printWriter.print("*" + tmpList2.size() + "\r\n");
                                                 for (int j = 0; j < tmpList2.size(); j++) {
                                                     printWriter.print("$" + tmpList2.get(j).length() + "\r\n");
