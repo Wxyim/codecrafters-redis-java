@@ -358,6 +358,49 @@ public class Main {
                                                 }
                                                 printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("XREAD")) {
+                                            String type = aa.get(i + 1);
+                                            if (!type.equals("STREAMS")) {
+                                                continue;
+                                            }
+
+                                            String key = aa.get(i + 2);
+                                            String st = aa.get(i + 3);
+                                            long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+                                            long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+
+                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
+                                            if (tmpList == null || tmpList.isEmpty()) {
+                                                printWriter.print("*0\r\n");
+                                            } else {
+                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
+                                                for (int x = 0; x < tmpList.size(); x++) {
+                                                    String idString = String.valueOf(tmpList.get(x).get("id"));
+                                                    long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+                                                    long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+
+                                                    boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
+                                                    if (isAfterStart) {
+                                                        resList.add(tmpList.get(x));
+                                                    }
+                                                }
+                                                printWriter.print("*1\r\n");
+                                                printWriter.print("*2\r\n");
+                                                printWriter.print("$" + key.length() + "\r\n" + key + "\r\n");
+                                                printWriter.print("*" + resList.size() + "\r\n");
+                                                for (ConcurrentHashMap<String, Object> tm : resList) {
+                                                    printWriter.print("*2\r\n");
+                                                    printWriter.print("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                    printWriter.print("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                    for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                        if (!entry.getKey().equals("id")) {
+                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                            printWriter.print("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                        }
+                                                    }
+                                                }
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
