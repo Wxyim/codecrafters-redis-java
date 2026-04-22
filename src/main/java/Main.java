@@ -99,26 +99,21 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("RPUSH")) {
-                                            Condition conditionMet = condList.get(aa.get(i + 1));
-                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
-                                            if (tmpList == null) {
-                                                tmpList = new CopyOnWriteArrayList<>();
+                                            String key = aa.get(i + 1);
+                                            lock.lock();
+                                            try {
+                                                CopyOnWriteArrayList<String> tmpList = mapList.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>());
                                                 for (int j = i + 2; j < length; j++) {
                                                     tmpList.add(aa.get(j));
                                                 }
-                                                mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
-                                            } else {
-                                                for (int j = i + 2; j < length; j++) {
-                                                    tmpList.add(aa.get(j));
+                                                Condition conditionMet = condList.get(key);
+                                                if (conditionMet != null) {
+                                                    conditionMet.signalAll();
                                                 }
-                                                mapList.put(aa.get(i + 1), tmpList);
-                                                printWriter.print(":" + tmpList.size() + "\r\n");
-                                                printWriter.flush();
-                                            }
-                                            if (conditionMet != null) {
-                                                conditionMet.signal();
+                                            } finally {
+                                                lock.unlock();
                                             }
                                         } else if (aa.get(i).equals("LRANGE")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
@@ -145,26 +140,21 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("LPUSH")) {
-                                            Condition conditionMet = condList.get(aa.get(i + 1));
-                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
-                                            if (tmpList == null) {
-                                                tmpList = new CopyOnWriteArrayList<>();
+                                            String key = aa.get(i + 1);
+                                            lock.lock();
+                                            try {
+                                                CopyOnWriteArrayList<String> tmpList = mapList.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>());
                                                 for (int j = i + 2; j < length; j++) {
                                                     tmpList.addFirst(aa.get(j));
                                                 }
-                                                mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
-                                            } else {
-                                                for (int j = i + 2; j < length; j++) {
-                                                    tmpList.addFirst(aa.get(j));
+                                                Condition conditionMet = condList.get(key);
+                                                if (conditionMet != null) {
+                                                    conditionMet.signalAll();
                                                 }
-                                                mapList.put(aa.get(i + 1), tmpList);
-                                                printWriter.print(":" + tmpList.size() + "\r\n");
-                                                printWriter.flush();
-                                            }
-                                            if (conditionMet != null) {
-                                                conditionMet.signal();
+                                            } finally {
+                                                lock.unlock();
                                             }
                                         } else if (aa.get(i).equals("LLEN")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
@@ -176,8 +166,8 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("LPOP")) {
-                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
-                                            if (tmpList == null || tmpList.isEmpty()) {
+                                            CopyOnWriteArrayList<String> tmpList = mapList.computeIfAbsent(aa.get(i + 1), k -> new CopyOnWriteArrayList<>());
+                                            if (tmpList.isEmpty()) {
                                                 printWriter.print("$-1\r\n");
                                                 printWriter.flush();
                                             } else {
@@ -195,38 +185,38 @@ public class Main {
                                                     String s = tmpList.removeFirst();
                                                     printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
                                                 }
-                                                mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("BLPOP")) {
-                                            Condition conditionMet = lock.newCondition();
-                                            condList.put(aa.get(i + 1), conditionMet);
-                                            lock.lock();
-                                            CopyOnWriteArrayList<String> tmpList = null;
+                                            String key = aa.get(i + 1);
                                             long btMillSec = length == 3 ? (long) (Double.parseDouble(aa.get(i + 2)) * 1000L) : 0;
-                                            boolean result = false;
+                                            lock.lock();
                                             try {
-                                                if (mapList.getOrDefault(aa.get(i + 1), null) == null || mapList.getOrDefault(aa.get(i + 1), null).isEmpty()) {
+                                                Condition conditionMet = condList.computeIfAbsent(key, k -> lock.newCondition());
+                                                boolean timedOut = false;
+                                                while (mapList.getOrDefault(key, new CopyOnWriteArrayList<>()).isEmpty()) {
                                                     if (btMillSec == 0) {
                                                         conditionMet.await();
                                                     } else {
-                                                        result = conditionMet.await(btMillSec, TimeUnit.MILLISECONDS);
+                                                        if (!conditionMet.await(btMillSec, TimeUnit.MILLISECONDS)) {
+                                                            timedOut = true;
+                                                            break;
+                                                        }
                                                     }
                                                 }
 
-                                                if (btMillSec > 0 && !result) {
+                                                if (timedOut) {
                                                     printWriter.print("*-1\r\n");
-                                                    printWriter.flush();
                                                 } else {
-                                                    tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                                    CopyOnWriteArrayList<String> tmpList = mapList.get(key);
                                                     String s = tmpList.removeFirst();
                                                     printWriter.print("*2\r\n");
-                                                    printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
+                                                    printWriter.print("$" + key.length() + "\r\n" + key + "\r\n");
                                                     printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
-                                                    mapList.put(aa.get(i + 1), tmpList);
-                                                    printWriter.flush();
                                                 }
-
+                                                printWriter.flush();
+                                            } catch (InterruptedException e) {
+                                                Thread.currentThread().interrupt();
                                             } finally {
                                                 lock.unlock();
                                             }
