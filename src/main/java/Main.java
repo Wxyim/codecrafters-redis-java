@@ -165,9 +165,21 @@ public class Main {
                                                 printWriter.print("$-1\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                String s = tmpList.removeFirst();
+                                                int n = length == 3 ? Integer.parseInt(aa.get(i + 2)) : 1;
+                                                if (n > 1) {
+                                                    if (n > tmpList.size()) {
+                                                        n = tmpList.size();
+                                                    }
+                                                    printWriter.print("*" + n + "\r\n");
+                                                    for (int j = 0; j < n; j++) {
+                                                        String s = tmpList.removeFirst();
+                                                        printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
+                                                    }
+                                                } else {
+                                                    String s = tmpList.removeFirst();
+                                                    printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
+                                                }
                                                 mapList.put(aa.get(i + 1), tmpList);
-                                                printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
                                                 printWriter.flush();
                                             }
                                         }
