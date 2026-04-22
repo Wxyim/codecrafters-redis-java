@@ -364,43 +364,93 @@ public class Main {
                                                 continue;
                                             }
 
-                                            String key = aa.get(i + 2);
-                                            String st = aa.get(i + 3);
-                                            long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
-                                            long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+                                            int n = (length - 2) / 2;
 
-                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
-                                            if (tmpList == null || tmpList.isEmpty()) {
-                                                printWriter.print("*0\r\n");
-                                            } else {
-                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
-                                                for (int x = 0; x < tmpList.size(); x++) {
-                                                    String idString = String.valueOf(tmpList.get(x).get("id"));
-                                                    long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
-                                                    long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+                                            StringBuffer sb = new StringBuffer();
+                                            sb.append("*" + n + "\r\n");
 
-                                                    boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
-                                                    if (isAfterStart) {
-                                                        resList.add(tmpList.get(x));
-                                                    }
-                                                }
-                                                printWriter.print("*1\r\n");
-                                                printWriter.print("*2\r\n");
-                                                printWriter.print("$" + key.length() + "\r\n" + key + "\r\n");
-                                                printWriter.print("*" + resList.size() + "\r\n");
-                                                for (ConcurrentHashMap<String, Object> tm : resList) {
-                                                    printWriter.print("*2\r\n");
-                                                    printWriter.print("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
-                                                    printWriter.print("*" + (tm.size() - 1) * 2 + "\r\n");
-                                                    for (Map.Entry<String, Object> entry : tm.entrySet()) {
-                                                        if (!entry.getKey().equals("id")) {
-                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
-                                                            printWriter.print("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                            for (int e = 0; e < n; e++) {
+                                                String key = aa.get(i + 2 + e);
+                                                String st = aa.get(i + 2 + e + n);
+                                                long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+                                                long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+
+                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
+                                                if (tmpList == null || tmpList.isEmpty()) {
+                                                    sb.append("*2\r\n");
+                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                    sb.append("*0\r\n");
+                                                } else {
+                                                    CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
+                                                    for (int x = 0; x < tmpList.size(); x++) {
+                                                        String idString = String.valueOf(tmpList.get(x).get("id"));
+                                                        long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+                                                        long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+
+                                                        boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
+                                                        if (isAfterStart) {
+                                                            resList.add(tmpList.get(x));
                                                         }
                                                     }
+                                                    sb.append("*2\r\n");
+                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                    sb.append("*" + resList.size() + "\r\n");
+                                                    for (ConcurrentHashMap<String, Object> tm : resList) {
+                                                        sb.append("*2\r\n");
+                                                        sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                        sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                        for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                            if (!entry.getKey().equals("id")) {
+                                                                sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                            }
+                                                        }
+                                                    }
+
                                                 }
-                                                printWriter.flush();
+
                                             }
+
+                                            printWriter.print(sb.toString());
+                                            printWriter.flush();
+
+//                                            String key = aa.get(i + 2);
+//                                            String st = aa.get(i + 3);
+//                                            long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+//                                            long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+//
+//                                            CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> tmpList = streamMap.getOrDefault(key,null);
+//                                            if (tmpList == null || tmpList.isEmpty()) {
+//                                                printWriter.print("*0\r\n");
+//                                            } else {
+//                                                CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
+//                                                for (int x = 0; x < tmpList.size(); x++) {
+//                                                    String idString = String.valueOf(tmpList.get(x).get("id"));
+//                                                    long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+//                                                    long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+//
+//                                                    boolean isAfterStart = (ids > f) || (ids == f && suffs > fi);
+//                                                    if (isAfterStart) {
+//                                                        resList.add(tmpList.get(x));
+//                                                    }
+//                                                }
+//                                                printWriter.print("*1\r\n");
+//                                                printWriter.print("*2\r\n");
+//                                                printWriter.print("$" + key.length() + "\r\n" + key + "\r\n");
+//                                                printWriter.print("*" + resList.size() + "\r\n");
+//                                                for (ConcurrentHashMap<String, Object> tm : resList) {
+//                                                    printWriter.print("*2\r\n");
+//                                                    printWriter.print("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+//                                                    printWriter.print("*" + (tm.size() - 1) * 2 + "\r\n");
+//                                                    for (Map.Entry<String, Object> entry : tm.entrySet()) {
+//                                                        if (!entry.getKey().equals("id")) {
+//                                                            printWriter.print("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+//                                                            printWriter.print("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+//                                                        }
+//                                                    }
+//                                                }
+//                                                printWriter.flush();
+//                                            }
                                         }
                                     }
                                 } else {
