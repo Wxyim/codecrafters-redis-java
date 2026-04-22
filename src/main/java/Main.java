@@ -220,6 +220,16 @@ public class Main {
                                             } finally {
                                                 lock.unlock();
                                             }
+                                        } else if (aa.get(i).equals("TYPE")) {
+                                            String key = aa.get(i + 1);
+                                            if (!map.containsKey(key)) {
+                                                printWriter.print("+none\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                String obj = map.get(key);
+                                                printWriter.print("+string\r\n");
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
