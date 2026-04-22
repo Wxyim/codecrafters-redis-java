@@ -460,10 +460,12 @@ public class Main {
                                                             if (ma.isEmpty()) {
                                                                 streamDolorMap.put(key, "0-0");
                                                                 conditionMet.await();
+                                                                continue;
                                                             } else {
-                                                                if (st.equals("$") && streamDolorMap.get(key) == null || streamDolorMap.get(key).isEmpty()) {
+                                                                if (st.equals("$") && (streamDolorMap.get(key) == null || streamDolorMap.get(key).isEmpty())) {
                                                                     streamDolorMap.put(key, String.valueOf(ma.getLast().get("id")));
                                                                     conditionMet.await();
+                                                                    continue;
                                                                 } else if (st.equals("$") && streamDolorMap.get(key).equals("0-0")) {
                                                                     sb.append("*2\r\n");
                                                                     sb.append("$" + key.length() + "\r\n" + key + "\r\n");
@@ -513,6 +515,7 @@ public class Main {
                                                                 }
                                                                 if (resList.isEmpty()) {
                                                                     conditionMet.await();
+                                                                    continue;
                                                                 } else {
                                                                     flag = true;
                                                                     sb.append("*2\r\n");
@@ -545,13 +548,15 @@ public class Main {
                                                                 if (!b) {
                                                                     break;
                                                                 }
+                                                                continue;
                                                             } else {
-                                                                if (st.equals("$") && streamDolorMap.get(key) == null || streamDolorMap.get(key).isEmpty()) {
+                                                                if (st.equals("$") && (streamDolorMap.get(key) == null || streamDolorMap.get(key).isEmpty())) {
                                                                     streamDolorMap.put(key, String.valueOf(ma.getLast().get("id")));
                                                                     b = conditionMet.awaitUntil(line);
                                                                     if (!b) {
                                                                         break;
                                                                     }
+                                                                    continue;
                                                                 } else if (st.equals("$") && streamDolorMap.get(key).equals("0-0")) {
                                                                     sb.append("*2\r\n");
                                                                     sb.append("$" + key.length() + "\r\n" + key + "\r\n");
@@ -604,6 +609,7 @@ public class Main {
                                                                     if (!b) {
                                                                         break;
                                                                     }
+                                                                    continue;
                                                                 } else {
                                                                     res = true;
                                                                     sb.append("*2\r\n");
