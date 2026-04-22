@@ -262,27 +262,32 @@ public class Main {
 
                                             } else {
                                                 ConcurrentHashMap<String, Object> last = tmpList.getLast();
-                                                String id = (String) last.get("id");
+                                                String lastId = (String) last.get("id");
+                                                String lastPre = lastId.substring(0, lastId.lastIndexOf("-"));
+                                                int lastSuff = Integer.parseInt(lastId.substring(lastId.lastIndexOf("-") + 1));
+
                                                 String newId = aa.get(i + 2);
-                                                int suf = 0;
-                                                if (aa.get(i + 2).endsWith("-*")) {
-                                                    String lastPre = aa.get(i + 2).substring(0, aa.get(i + 2).length() - 2);
-                                                    String newPre = newId.substring(0, newId.length() - 2);
+                                                String newPre = newId.substring(0, lastId.lastIndexOf("-"));
+                                                int newSuff = 0;
+
+                                                if (newId.endsWith("-*")) {
                                                     if (lastPre.equals(newPre)) {
-                                                        suf = Integer.parseInt(aa.get(i + 2).substring(aa.get(i + 2).lastIndexOf("-"))) + 1;
-                                                        newId = newPre + "-" + suf;
+                                                        newSuff = lastSuff + 1;
+                                                        newId = newPre + "-" + newSuff;
                                                     } else if (newPre.compareTo(lastPre) < 0) {
                                                         printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
                                                         printWriter.flush();
                                                         continue;
+                                                    } else {
+                                                        newId = newPre + "-0";
                                                     }
-                                                } else if (aa.get(i + 2).startsWith("*")) {
+                                                } else if (newId.startsWith("*")) {
                                                     newId = System.currentTimeMillis() + "-0";
                                                 }
                                                 if (newId.equals("0-0")) {
                                                     printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
                                                     printWriter.flush();
-                                                } else if (newId.compareTo(id) <= 0) {
+                                                } else if (newId.compareTo(lastId) <= 0) {
                                                     printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
                                                     printWriter.flush();
                                                 } else {
