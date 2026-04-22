@@ -150,6 +150,15 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("LLEN")) {
+                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                            if (tmpList == null) {
+                                                printWriter.print(":0\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                printWriter.print(":" + tmpList.size() + "\r\n");
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
