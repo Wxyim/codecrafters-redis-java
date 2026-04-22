@@ -441,8 +441,12 @@ public class Main {
                                                     for (int e = 0; e < n; e++) {
                                                         String key = aa.get(i + 4 + e);
                                                         String st = aa.get(i + 4 + e + n);
-                                                        long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
-                                                        long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+                                                        long f = 0;
+                                                        long fi = 0;
+                                                        if (!st.equals("$")) {
+                                                            f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+                                                            fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+                                                        }
                                                         Condition conditionMet = condList.computeIfAbsent(key, k -> streamlock.newCondition());
                                                         boolean flag = false;
 
@@ -452,6 +456,23 @@ public class Main {
                                                             if (ma.isEmpty()) {
                                                                 conditionMet.await();
                                                             } else {
+                                                                if (st.equals("$")) {
+                                                                    sb.append("*2\r\n");
+                                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                                    sb.append("*" + ma.size() + "\r\n");
+                                                                    for (ConcurrentHashMap<String, Object> tm : ma) {
+                                                                        sb.append("*2\r\n");
+                                                                        sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                                        sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                                        for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                                            if (!entry.getKey().equals("id")) {
+                                                                                sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                                sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    break;
+                                                                }
                                                                 for (int x = 0; x < ma.size(); x++) {
                                                                     String idString = String.valueOf(ma.get(x).get("id"));
                                                                     long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
@@ -496,6 +517,23 @@ public class Main {
                                                                     break;
                                                                 }
                                                             } else {
+                                                                if (st.equals("$")) {
+                                                                    sb.append("*2\r\n");
+                                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                                    sb.append("*" + ma.size() + "\r\n");
+                                                                    for (ConcurrentHashMap<String, Object> tm : ma) {
+                                                                        sb.append("*2\r\n");
+                                                                        sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                                        sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                                        for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                                            if (!entry.getKey().equals("id")) {
+                                                                                sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                                sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    break;
+                                                                }
                                                                 for (int x = 0; x < ma.size(); x++) {
                                                                     String idString = String.valueOf(ma.get(x).get("id"));
                                                                     long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
