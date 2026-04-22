@@ -242,13 +242,13 @@ public class Main {
                                                         if (aa.get(j + 1).endsWith("-*")) {
                                                             String newPre = aa.get(j + 1).substring(0, aa.get(j + 1).length() - 2);
                                                             if (newPre.equals("0")) {
-                                                                m.put("id", newPre + "1");
+                                                                m.put("id", newPre + "-1");
                                                             } else {
-                                                                m.put("id", newPre + "0");
+                                                                m.put("id", newPre + "-0");
                                                             }
 
                                                         } else if (aa.get(j + 1).startsWith("*")) {
-                                                            m.put("id", System.currentTimeMillis() + "0");
+                                                            m.put("id", System.currentTimeMillis() + "-0");
                                                         } else {
                                                             m.put("id", aa.get(j + 1));
                                                         }
