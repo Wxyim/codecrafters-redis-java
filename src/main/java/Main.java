@@ -317,8 +317,10 @@ public class Main {
                                                 printWriter.print("*0\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                long f = Long.parseLong(aa.get(i + 2));
-                                                long t = Long.parseLong(aa.get(i + 3));
+                                                String st = aa.get(i + 2);
+                                                String en = aa.get(i + 3);
+                                                long f = Long.parseLong(st.substring(0, st.lastIndexOf("-")));
+                                                long t = Long.parseLong(st.substring(0, en.lastIndexOf("-")));
                                                 CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
                                                 for (int x = 0; i < tmpList.size(); x++) {
                                                     String idString = String.valueOf(tmpList.get(x).get("id"));
