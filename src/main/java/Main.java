@@ -482,7 +482,7 @@ public class Main {
                                                                     break;
                                                                 } else if (st.equals("$")) {
                                                                     ma = ma.stream().
-                                                                            filter(m -> String.valueOf(m.get("id")).compareTo(xreadLastId.get()) > 0)
+                                                                            filter(m -> String.valueOf(m.get("id")).compareTo(streamDolorMap.get(key)) > 0)
                                                                             .sorted(Comparator.comparing(ms -> String.valueOf(ms.get("id"))))
                                                                             .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
                                                                     sb.append("*2\r\n");
@@ -570,7 +570,7 @@ public class Main {
                                                                     break;
                                                                 } else if (st.equals("$")) {
                                                                     ma = ma.stream().
-                                                                            filter(m -> String.valueOf(m.get("id")).compareTo(xreadLastId.get()) > 0)
+                                                                            filter(m -> String.valueOf(m.get("id")).compareTo(streamDolorMap.get(key)) > 0)
                                                                             .sorted(Comparator.comparing(ms -> String.valueOf(ms.get("id"))))
                                                                             .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
                                                                     sb.append("*2\r\n");
