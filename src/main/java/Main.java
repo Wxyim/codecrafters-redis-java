@@ -240,7 +240,13 @@ public class Main {
                                                 for (int j = i + 1; j < length; j += 2) {
                                                     if (j == i + 1) {
                                                         if (aa.get(j + 1).endsWith("-*")) {
-                                                            m.put("id", aa.get(j + 1).substring(0, aa.get(j + 1).length() - 2) + "0");
+                                                            String newPre = aa.get(j + 1).substring(0, aa.get(j + 1).length() - 2);
+                                                            if (newPre.equals("0")) {
+                                                                m.put("id", newPre + "1");
+                                                            } else {
+                                                                m.put("id", newPre + "0");
+                                                            }
+
                                                         } else if (aa.get(j + 1).startsWith("*")) {
                                                             m.put("id", System.currentTimeMillis() + "0");
                                                         } else {
