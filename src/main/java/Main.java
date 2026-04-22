@@ -210,7 +210,7 @@ public class Main {
                                                     if (btMillSec == 0) {
                                                         conditionMet.await();
                                                     } else {
-                                                        result = conditionMet.await(btMillSec + 10, TimeUnit.MICROSECONDS);
+                                                        result = conditionMet.await(btMillSec, TimeUnit.MILLISECONDS);
                                                     }
                                                 }
 
