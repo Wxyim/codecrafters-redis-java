@@ -43,7 +43,7 @@ public class Main {
 
           Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
 
-          AtomicReference<String> xreadLastId = new AtomicReference<>();
+          Map<String, String> streamDolorMap = new ConcurrentHashMap<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -458,13 +458,13 @@ public class Main {
                                                         while (!flag && timeOut == 0) {
                                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> ma = streamMap.getOrDefault(key, new CopyOnWriteArrayList<>());
                                                             if (ma.isEmpty()) {
-                                                                xreadLastId.set("0-0");
+                                                                streamDolorMap.put(key, "0-0");
                                                                 conditionMet.await();
                                                             } else {
-                                                                if (st.equals("$") && xreadLastId.get().isEmpty()) {
-                                                                    xreadLastId.set(String.valueOf(ma.getLast().get("id")));
+                                                                if (st.equals("$") && streamDolorMap.get(key) == null || streamDolorMap.get(key).isEmpty()) {
+                                                                    streamDolorMap.put(key, String.valueOf(ma.getLast().get("id")));
                                                                     conditionMet.await();
-                                                                } else if (st.equals("$") && xreadLastId.get().equals("0-0")) {
+                                                                } else if (st.equals("$") && streamDolorMap.get(key).equals("0-0")) {
                                                                     sb.append("*2\r\n");
                                                                     sb.append("$" + key.length() + "\r\n" + key + "\r\n");
                                                                     sb.append("*" + ma.size() + "\r\n");
@@ -540,19 +540,19 @@ public class Main {
                                                         while (!res && timeOut > 0) {
                                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> ma = streamMap.getOrDefault(key, new CopyOnWriteArrayList<>());
                                                             if (ma.isEmpty()) {
-                                                                xreadLastId.set("0-0");
+                                                                streamDolorMap.put(key, "0-0");
                                                                 b = conditionMet.awaitUntil(line);
                                                                 if (!b) {
                                                                     break;
                                                                 }
                                                             } else {
-                                                                if (st.equals("$") && xreadLastId.get().isEmpty()) {
-                                                                    xreadLastId.set(String.valueOf(ma.getLast().get("id")));
+                                                                if (st.equals("$") && streamDolorMap.get(key) == null || streamDolorMap.get(key).isEmpty()) {
+                                                                    streamDolorMap.put(key, String.valueOf(ma.getLast().get("id")));
                                                                     b = conditionMet.awaitUntil(line);
                                                                     if (!b) {
                                                                         break;
                                                                     }
-                                                                } else if (st.equals("$") && xreadLastId.get().equals("0-0")) {
+                                                                } else if (st.equals("$") && streamDolorMap.get(key).equals("0-0")) {
                                                                     sb.append("*2\r\n");
                                                                     sb.append("$" + key.length() + "\r\n" + key + "\r\n");
                                                                     sb.append("*" + ma.size() + "\r\n");
