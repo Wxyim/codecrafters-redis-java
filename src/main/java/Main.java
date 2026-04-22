@@ -445,7 +445,6 @@ public class Main {
                                                         long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
                                                         Condition conditionMet = condList.computeIfAbsent(key, k -> streamlock.newCondition());
                                                         boolean flag = false;
-                                                        boolean res = false;
 
                                                         while (!flag && timeOut == 0) {
                                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> ma = streamMap.getOrDefault(key, new CopyOnWriteArrayList<>());
@@ -486,6 +485,7 @@ public class Main {
 
                                                         }
 
+                                                        boolean res = false;
                                                         boolean b = false;
                                                         Date line = new Date(System.currentTimeMillis() + timeOut);
                                                         while (!res && timeOut > 0) {
@@ -526,7 +526,7 @@ public class Main {
                                                             }
                                                         }
 
-                                                        if (!b) {
+                                                        if (timeOut > 0 && !b) {
                                                             sb.append("*2\r\n");
                                                             sb.append("$" + key.length() + "\r\n" + key + "\r\n");
                                                             sb.append("*-1\r\n");
