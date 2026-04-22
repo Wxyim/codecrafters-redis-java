@@ -203,7 +203,7 @@ public class Main {
                                             condList.put(aa.get(i + 1), conditionMet);
                                             lock.lock();
                                             CopyOnWriteArrayList<String> tmpList = null;
-                                            long btMillSec = length == 3 ? Integer.parseInt(aa.get(i + 2)) * 1000L : 0;
+                                            long btMillSec = length == 3 ? (long) (Double.parseDouble(aa.get(i + 2)) * 1000L) : 0;
                                             boolean result = false;
                                             try {
                                                 if (mapList.getOrDefault(aa.get(i + 1), null) == null || mapList.getOrDefault(aa.get(i + 1), null).isEmpty()) {
