@@ -110,11 +110,13 @@ public class Main {
                                             }
                                         } else if (aa.get(i).equals("LRANGE")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
-                                            if (tmpList == null) {
+                                            int f = Integer.parseInt(aa.get(i + 2));
+                                            int t = Integer.parseInt(aa.get(i + 3));
+                                            if (tmpList == null || f < 0 || f > t || f >= tmpList.size()) {
                                                 printWriter.print("*0\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                List<String> tmpList2 = tmpList.subList(Integer.parseInt(aa.get(i + 2)), Integer.parseInt(aa.get(i + 3)) + 1);
+                                                List<String> tmpList2 = tmpList.subList(f, t >= tmpList.size() ? tmpList.size() : t + 1);
                                                 printWriter.print("*" + tmpList2.size() + "\r\n");
                                                 for (int j = 0; j < tmpList2.size(); j++) {
                                                     printWriter.print("$" + tmpList2.get(j).length() + "\r\n");
