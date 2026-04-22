@@ -239,35 +239,57 @@ public class Main {
                                                 ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
                                                 for (int j = i + 1; j < length; j += 2) {
                                                     if (j == i + 1) {
-                                                        m.put("id", aa.get(j + 1));
+                                                        if (aa.get(j + 1).endsWith("-*")) {
+                                                            m.put("id", aa.get(j + 1).substring(0, aa.get(j + 1).length() - 2) + "0");
+                                                        } else if (aa.get(j + 1).startsWith("*")) {
+                                                            m.put("id", System.currentTimeMillis() + "0");
+                                                        } else {
+                                                            m.put("id", aa.get(j + 1));
+                                                        }
                                                     } else {
                                                         m.put(aa.get(j), aa.get(j + 1));
                                                     }
                                                 }
                                                 tmpList.add(m);
-                                                printWriter.print("$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                printWriter.print("$" + String.valueOf(m.get("id")).length() + "\r\n" + m.get("id") + "\r\n");
                                                 printWriter.flush();
 
                                             } else {
                                                 ConcurrentHashMap<String, Object> last = tmpList.getLast();
                                                 String id = (String) last.get("id");
-                                                if (aa.get(i + 2).equals("0-0")) {
+                                                String newId = aa.get(i + 2);
+                                                int suf = 0;
+                                                if (aa.get(i + 2).endsWith("-*")) {
+                                                    String lastPre = aa.get(i + 2).substring(0, aa.get(i + 2).length() - 2);
+                                                    String newPre = newId.substring(0, newId.length() - 2);
+                                                    if (lastPre.equals(newPre)) {
+                                                        suf = Integer.parseInt(aa.get(i + 2).substring(aa.get(i + 2).lastIndexOf("-"))) + 1;
+                                                        newId = newPre + "-" + suf;
+                                                    } else if (newPre.compareTo(lastPre) < 0) {
+                                                        printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
+                                                        printWriter.flush();
+                                                        continue;
+                                                    }
+                                                } else if (aa.get(i + 2).startsWith("*")) {
+                                                    newId = System.currentTimeMillis() + "-0";
+                                                }
+                                                if (newId.equals("0-0")) {
                                                     printWriter.print("-ERR The ID specified in XADD must be greater than 0-0\r\n");
                                                     printWriter.flush();
-                                                } else if (aa.get(i + 2).compareTo(id) <= 0) {
+                                                } else if (newId.compareTo(id) <= 0) {
                                                     printWriter.print("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
                                                     printWriter.flush();
                                                 } else {
                                                     ConcurrentHashMap<String, Object> m = new ConcurrentHashMap<>();
                                                     for (int j = i + 1; j < length; j += 2) {
                                                         if (j == i + 1) {
-                                                            m.put("id", aa.get(j + 1));
+                                                            m.put("id", newId);
                                                         } else {
                                                             m.put(aa.get(j), aa.get(j + 1));
                                                         }
                                                     }
                                                     tmpList.add(m);
-                                                    printWriter.print("$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                    printWriter.print("$" + String.valueOf(m.get("id")).length() + "\r\n" + m.get("id") + "\r\n");
                                                     printWriter.flush();
                                                 }
 
