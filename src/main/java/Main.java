@@ -360,7 +360,7 @@ public class Main {
                                             }
                                         } else if (aa.get(i).equals("XREAD")) {
                                             String type = aa.get(i + 1);
-                                            if (!type.equals("STREAMS")) {
+                                            if (!type.equalsIgnoreCase("STREAMS")) {
                                                 continue;
                                             }
 
