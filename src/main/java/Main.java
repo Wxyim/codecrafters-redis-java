@@ -319,13 +319,17 @@ public class Main {
                                             } else {
                                                 String st = aa.get(i + 2);
                                                 String en = aa.get(i + 3);
-                                                long f = Long.parseLong(st.substring(0, st.lastIndexOf("-")));
-                                                long t = Long.parseLong(st.substring(0, en.lastIndexOf("-")));
+                                                long f = st.contains("-") ? Long.parseLong(st.substring(0, st.lastIndexOf("-"))) : Long.parseLong(st);
+                                                long fi = st.contains("-") ? Long.parseLong(st.substring(st.lastIndexOf("-") + 1)) : 0;
+                                                long t = en.contains("-") ? Long.parseLong(en.substring(0, en.lastIndexOf("-"))) : Long.parseLong(en);
+                                                long ti = en.contains("-") ? Long.parseLong(en.substring(en.lastIndexOf("-") + 1)) : Long.MAX_VALUE;
                                                 CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
                                                 for (int x = 0; i < tmpList.size(); x++) {
                                                     String idString = String.valueOf(tmpList.get(x).get("id"));
-                                                    long ts = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
-                                                    if (ts >= f && ts <= t) {
+                                                    long ids = Long.parseLong(idString.substring(0, idString.lastIndexOf("-")));
+                                                    long suffs = Long.parseLong(idString.substring(idString.lastIndexOf("-") + 1));
+
+                                                    if (ids >= f && suffs >= fi && ids <= t && suffs <= ti) {
                                                         resList.add(tmpList.get(x));
                                                     }
                                                 }
