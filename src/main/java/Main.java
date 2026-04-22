@@ -108,6 +108,20 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("LRANGE")) {
+                                            CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                            if (tmpList == null) {
+                                                printWriter.print("*0\r\n");
+                                                printWriter.flush();
+                                            } else {
+                                                List<String> tmpList2 = tmpList.subList(i + 2, i + 3);
+                                                printWriter.print("*" + tmpList2.size() + "\r\n");
+                                                for (int j = 0; j < tmpList2.size(); j++) {
+                                                    printWriter.print("$" + tmpList2.get(j).length() + "\r\n");
+                                                    printWriter.print(tmpList2.get(j) + "\r\n");
+                                                }
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
