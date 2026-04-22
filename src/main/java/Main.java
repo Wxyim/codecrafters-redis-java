@@ -112,7 +112,7 @@ public class Main {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             int f = Integer.parseInt(aa.get(i + 2));
                                             int t = Integer.parseInt(aa.get(i + 3));
-                                            if (tmpList == null || f > t || f >= tmpList.size()) {
+                                            if (tmpList == null || f > t && f >= 0 && t >= 0 || f >= tmpList.size()) {
                                                 printWriter.print("*0\r\n");
                                                 printWriter.flush();
                                             } else {
