@@ -203,18 +203,18 @@ public class Main {
                                             condList.put(aa.get(i + 1), conditionMet);
                                             lock.lock();
                                             CopyOnWriteArrayList<String> tmpList = null;
-                                            int btSec = length == 3 ? Integer.parseInt(aa.get(i + 2)) : 0;
+                                            long btMillSec = length == 3 ? Integer.parseInt(aa.get(i + 2)) * 1000L : 0;
                                             boolean result = false;
                                             try {
                                                 if (mapList.getOrDefault(aa.get(i + 1), null) == null || mapList.getOrDefault(aa.get(i + 1), null).isEmpty()) {
-                                                    if (btSec == 0) {
+                                                    if (btMillSec == 0) {
                                                         conditionMet.await();
                                                     } else {
-                                                        result = conditionMet.await(btSec, TimeUnit.SECONDS);
+                                                        result = conditionMet.await(btMillSec, TimeUnit.MICROSECONDS);
                                                     }
                                                 }
 
-                                                if (btSec > 0 && !result) {
+                                                if (btMillSec > 0 && !result) {
                                                     printWriter.print("*-1\r\n");
                                                     printWriter.flush();
                                                 } else {
