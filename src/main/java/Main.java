@@ -3,9 +3,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class Main {
   public static void main(String[] args){
@@ -40,6 +42,8 @@ public class Main {
           Map<String, Condition> condList = new ConcurrentHashMap<>();
 
           Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
+
+          AtomicReference<String> xreadLastId = new AtomicReference<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -454,9 +458,33 @@ public class Main {
                                                         while (!flag && timeOut == 0) {
                                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> ma = streamMap.getOrDefault(key, new CopyOnWriteArrayList<>());
                                                             if (ma.isEmpty()) {
+                                                                xreadLastId.set("0-0");
                                                                 conditionMet.await();
                                                             } else {
-                                                                if (st.equals("$")) {
+                                                                if (st.equals("$") && xreadLastId.get().isEmpty()) {
+                                                                    xreadLastId.set(String.valueOf(ma.getLast().get("id")));
+                                                                    conditionMet.await();
+                                                                } else if (st.equals("$") && xreadLastId.get().equals("0-0")) {
+                                                                    sb.append("*2\r\n");
+                                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                                    sb.append("*" + ma.size() + "\r\n");
+                                                                    for (ConcurrentHashMap<String, Object> tm : ma) {
+                                                                        sb.append("*2\r\n");
+                                                                        sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                                        sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                                        for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                                            if (!entry.getKey().equals("id")) {
+                                                                                sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                                sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    break;
+                                                                } else if (st.equals("$")) {
+                                                                    ma = ma.stream().
+                                                                            filter(m -> String.valueOf(m.get("id")).compareTo(xreadLastId.get()) > 0)
+                                                                            .sorted(Comparator.comparing(ms -> String.valueOf(ms.get("id"))))
+                                                                            .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
                                                                     sb.append("*2\r\n");
                                                                     sb.append("$" + key.length() + "\r\n" + key + "\r\n");
                                                                     sb.append("*" + ma.size() + "\r\n");
@@ -512,12 +540,39 @@ public class Main {
                                                         while (!res && timeOut > 0) {
                                                             CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> ma = streamMap.getOrDefault(key, new CopyOnWriteArrayList<>());
                                                             if (ma.isEmpty()) {
+                                                                xreadLastId.set("0-0");
                                                                 b = conditionMet.awaitUntil(line);
                                                                 if (!b) {
                                                                     break;
                                                                 }
                                                             } else {
-                                                                if (st.equals("$")) {
+                                                                if (st.equals("$") && xreadLastId.get().isEmpty()) {
+                                                                    xreadLastId.set(String.valueOf(ma.getLast().get("id")));
+                                                                    b = conditionMet.awaitUntil(line);
+                                                                    if (!b) {
+                                                                        break;
+                                                                    }
+                                                                } else if (st.equals("$") && xreadLastId.get().equals("0-0")) {
+                                                                    sb.append("*2\r\n");
+                                                                    sb.append("$" + key.length() + "\r\n" + key + "\r\n");
+                                                                    sb.append("*" + ma.size() + "\r\n");
+                                                                    for (ConcurrentHashMap<String, Object> tm : ma) {
+                                                                        sb.append("*2\r\n");
+                                                                        sb.append("$" + String.valueOf(tm.get("id")).length() + "\r\n" + tm.get("id") + "\r\n");
+                                                                        sb.append("*" + (tm.size() - 1) * 2 + "\r\n");
+                                                                        for (Map.Entry<String, Object> entry : tm.entrySet()) {
+                                                                            if (!entry.getKey().equals("id")) {
+                                                                                sb.append("$" + entry.getKey().length() + "\r\n" + entry.getKey() + "\r\n");
+                                                                                sb.append("$" + String.valueOf(entry.getValue()).length() + "\r\n" + entry.getValue() + "\r\n");
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    break;
+                                                                } else if (st.equals("$")) {
+                                                                    ma = ma.stream().
+                                                                            filter(m -> String.valueOf(m.get("id")).compareTo(xreadLastId.get()) > 0)
+                                                                            .sorted(Comparator.comparing(ms -> String.valueOf(ms.get("id"))))
+                                                                            .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
                                                                     sb.append("*2\r\n");
                                                                     sb.append("$" + key.length() + "\r\n" + key + "\r\n");
                                                                     sb.append("*" + ma.size() + "\r\n");
