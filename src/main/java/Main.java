@@ -4,6 +4,10 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Main {
   public static void main(String[] args){
@@ -30,6 +34,10 @@ public class Main {
           List<String> list = Collections.synchronizedList(new ArrayList<>());
 
           Map<String, CopyOnWriteArrayList<String>> mapList = new ConcurrentHashMap<>();
+
+          Lock lock = new ReentrantLock(true);
+
+          Condition conditionMet = lock.newCondition();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -108,6 +116,7 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
+                                            conditionMet.signal();
                                         } else if (aa.get(i).equals("LRANGE")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             int f = Integer.parseInt(aa.get(i + 2));
@@ -150,6 +159,7 @@ public class Main {
                                                 printWriter.print(":" + tmpList.size() + "\r\n");
                                                 printWriter.flush();
                                             }
+                                            conditionMet.signal();
                                         } else if (aa.get(i).equals("LLEN")) {
                                             CopyOnWriteArrayList<String> tmpList = mapList.getOrDefault(aa.get(i + 1), null);
                                             if (tmpList == null) {
@@ -181,6 +191,36 @@ public class Main {
                                                 }
                                                 mapList.put(aa.get(i + 1), tmpList);
                                                 printWriter.flush();
+                                            }
+                                        } else if (aa.get(i).equals("BLPOP")) {
+                                            lock.lock();
+                                            CopyOnWriteArrayList<String> tmpList = null;
+                                            int btSec = length == 3 ? Integer.parseInt(aa.get(i + 2)) : 0;
+                                            boolean result = false;
+                                            try {
+                                                if (mapList.getOrDefault(aa.get(i + 1), null) == null || mapList.getOrDefault(aa.get(i + 1), null).isEmpty()) {
+                                                    if (btSec == 0) {
+                                                        conditionMet.await();
+                                                    } else {
+                                                        result = conditionMet.await(btSec, TimeUnit.SECONDS);
+                                                    }
+                                                }
+
+                                                if (btSec > 0 && !result) {
+                                                    printWriter.print("$-1\r\n");
+                                                    printWriter.flush();
+                                                } else {
+                                                    tmpList = mapList.getOrDefault(aa.get(i + 1), null);
+                                                    String s = tmpList.removeFirst();
+                                                    printWriter.print("*2\r\n");
+                                                    printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
+                                                    printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
+                                                    mapList.put(aa.get(i + 1), tmpList);
+                                                    printWriter.flush();
+                                                }
+
+                                            } finally {
+                                                lock.unlock();
                                             }
                                         }
                                     }
