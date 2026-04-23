@@ -49,8 +49,6 @@ public class Main {
 
           Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
-          Map<String, Boolean> keyModMap = new ConcurrentHashMap<>();
-
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -116,7 +114,6 @@ public class Main {
                                                     }
                                                 }
                                             }
-                                            keyModMap.put(aa.get(i + 1), true);
                                             map.put(aa.get(i + 1), aa.get(i + 2));
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
