@@ -837,6 +837,10 @@ public class Main {
                                                 printWriter.print("+OK\r\n");
                                             }
                                             printWriter.flush();
+                                        } else if (aa.get(i).equals("UNWATCH")) {
+                                            watchMap.remove(Thread.currentThread().getName());
+                                            printWriter.print("+OK\r\n");
+                                            printWriter.flush();
                                         }
 
 
