@@ -45,9 +45,7 @@ public class Main {
 
           Map<String, String> streamDolorMap = new ConcurrentHashMap<>();
 
-          Map<String, Boolean> multiMap = new ConcurrentHashMap<>();
-
-          Queue<String> que = new LinkedList<>();
+          Map<String, Queue<String>> multiMap = new ConcurrentHashMap<>();
 
 
             while (true) {
@@ -80,7 +78,8 @@ public class Main {
                                             printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("SET")) {
-                                            if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
+                                            Queue<String> que = multiMap.get(Thread.currentThread().getName());
+                                            if (que != null) {
                                                 printWriter.print("+QUEUED\r\n");
                                                 printWriter.flush();
                                                 if (i + 3 < aa.size()) {
@@ -103,7 +102,8 @@ public class Main {
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
-                                            if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
+                                            Queue<String> que = multiMap.get(Thread.currentThread().getName());
+                                            if (que != null) {
                                                 printWriter.print("+QUEUED\r\n");
                                                 printWriter.flush();
                                                 que.add(aa.get(i) + " " + aa.get(i + 1));
@@ -676,7 +676,8 @@ public class Main {
 
 
                                         } else if (aa.get(i).equals("INCR")) {
-                                            if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
+                                            Queue<String> que = multiMap.get(Thread.currentThread().getName());
+                                            if (que != null) {
                                                 printWriter.print("+QUEUED\r\n");
                                                 printWriter.flush();
                                                 que.add(aa.get(i) + " " + aa.get(i + 1));
@@ -702,11 +703,13 @@ public class Main {
                                             }
 
                                         } else if (aa.get(i).equals("MULTI")) {
-                                            multiMap.put(Thread.currentThread().getName(), true);
+                                            Queue<String> que = new LinkedList<>();
+                                            multiMap.put(Thread.currentThread().getName(), que);
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("EXEC")) {
-                                            if (multiMap.containsKey(Thread.currentThread().getName()) && multiMap.get(Thread.currentThread().getName())) {
+                                            Queue<String> que = multiMap.get(Thread.currentThread().getName());
+                                            if (que != null) {
                                                 if (que.isEmpty()) {
                                                     printWriter.print("*0\r\n");
                                                     printWriter.flush();
@@ -768,7 +771,8 @@ public class Main {
                                                 printWriter.flush();
                                             }
                                         } else if (aa.get(i).equals("DISCARD")) {
-                                            if (multiMap.containsKey(Thread.currentThread().getName()) && multiMap.get(Thread.currentThread().getName())) {
+                                            Queue<String> que = multiMap.get(Thread.currentThread().getName());
+                                            if (que != null) {
                                                 printWriter.print("+OK\r\n");
                                                 multiMap.remove(Thread.currentThread().getName());
                                                 que.clear();
