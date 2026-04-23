@@ -665,7 +665,7 @@ public class Main {
                                                     continue;
                                                 }
                                                 map.put(key, String.valueOf(val + 1));
-                                                printWriter.print(":" + val + 1 + "\r\n");
+                                                printWriter.print(":" + (val + 1) + "\r\n");
                                                 printWriter.flush();
                                             } else {
                                                 map.put(key, "1");
