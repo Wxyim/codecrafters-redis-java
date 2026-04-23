@@ -673,6 +673,11 @@ public class Main {
                                                 printWriter.flush();
                                             }
 
+                                        } else if (aa.get(i).equals("MULTI")) {
+
+
+                                            printWriter.print("+OK\r\n");
+                                            printWriter.flush();
                                         }
 
 
