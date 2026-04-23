@@ -713,6 +713,8 @@ public class Main {
                                                     multiMap.remove(Thread.currentThread().getName());
                                                     continue;
                                                 }
+                                                StringBuffer sb = new StringBuffer();
+                                                sb.append("*" + que.size() + "\r\n");
                                                 while (!que.isEmpty()) {
                                                     String[] task = que.poll().split(" ");
                                                     if (task[0].equals("SET")) {
@@ -725,8 +727,7 @@ public class Main {
                                                             mapTime.put(task[1], date);
                                                         }
                                                         map.put(task[1], task[2]);
-                                                        printWriter.print("+OK" + "\r\n");
-                                                        printWriter.flush();
+                                                        sb.append("+OK" + "\r\n");
                                                     } else if (task[0].equals("INCR")) {
                                                         String key = task[1];
                                                         if (map.containsKey(key)) {
@@ -734,38 +735,33 @@ public class Main {
                                                             try {
                                                                 val = Integer.parseInt(map.get(key));
                                                             } catch (NumberFormatException e) {
-                                                                printWriter.print("-ERR value is not an integer or out of range\r\n");
-                                                                printWriter.flush();
+                                                                sb.append("-ERR value is not an integer or out of range\r\n");
                                                                 continue;
                                                             }
                                                             map.put(key, String.valueOf(val + 1));
-                                                            printWriter.print(":" + (val + 1) + "\r\n");
-                                                            printWriter.flush();
+                                                            sb.append(":" + (val + 1) + "\r\n");
                                                         } else {
                                                             map.put(key, "1");
-                                                            printWriter.print(":1\r\n");
-                                                            printWriter.flush();
+                                                            sb.append(":1\r\n");
                                                         }
                                                     } else if (task[0].equals("GET")) {
                                                         if (map.containsKey(task[1]) && !mapTime.containsKey(task[1])) {
-                                                            printWriter.print("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
-                                                            printWriter.flush();
+                                                            sb.append("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
                                                         } else if (map.containsKey(task[1]) && mapTime.containsKey(task[1])) {
                                                             if (mapTime.get(task[1]).before(new Date())) {
-                                                                printWriter.print("$-1\r\n");
-                                                                printWriter.flush();
+                                                                sb.append("$-1\r\n");
                                                                 map.remove(task[1]);
                                                                 mapTime.remove(task[1]);
                                                             } else {
-                                                                printWriter.print("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
-                                                                printWriter.flush();
+                                                                sb.append("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
                                                             }
                                                         } else {
-                                                            printWriter.print("$-1\r\n");
-                                                            printWriter.flush();
+                                                            sb.append("$-1\r\n");
                                                         }
                                                     }
                                                 }
+                                                printWriter.print(sb);
+                                                printWriter.flush();
                                                 multiMap.remove(Thread.currentThread().getName());
                                             } else {
                                                 printWriter.print("-ERR EXEC without MULTI\r\n");
