@@ -661,7 +661,8 @@ public class Main {
                                                 printWriter.print(":" + (val + 1) + "\r\n");
                                                 printWriter.flush();
                                             } else {
-                                                printWriter.print("");
+                                                map.put(key, "1");
+                                                printWriter.print(":1\r\n");
                                                 printWriter.flush();
                                             }
 
