@@ -754,8 +754,8 @@ public class Main {
                                                             if (mapTime.get(task[1]).before(new Date())) {
                                                                 printWriter.print("$-1\r\n");
                                                                 printWriter.flush();
-                                                                map.remove(aa.get(i + 1));
-                                                                mapTime.remove(aa.get(i + 1));
+                                                                map.remove(task[1]);
+                                                                mapTime.remove(task[1]);
                                                             } else {
                                                                 printWriter.print("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
                                                                 printWriter.flush();
