@@ -47,7 +47,7 @@ public class Main {
 
           Map<String, Queue<String>> multiMap = new ConcurrentHashMap<>();
 
-          Map<String, List<String>> watchMap = new ConcurrentHashMap<>();
+          Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
           Map<String, Boolean> keyModMap = new ConcurrentHashMap<>();
 
@@ -94,14 +94,27 @@ public class Main {
                                                 }
                                                 continue;
                                             }
+                                            boolean f = false;
                                             if (i + 3 < aa.size()
                                                     && (aa.get(i + 3).equalsIgnoreCase("px")
                                                     || aa.get(i + 3).equalsIgnoreCase("ex"))) {
                                                 Date date = aa.get(i + 3).equalsIgnoreCase("px")
                                                         ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
                                                         : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
-                                                keyModMap.put(aa.get(i + 1), true);
+                                                for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
+                                                    if (entry.getValue().containsKey(aa.get(i + 1))) {
+                                                        entry.getValue().put(aa.get(i + 1), true);
+                                                    }
+                                                }
+                                                f = true;
                                                 mapTime.put(aa.get(i + 1), date);
+                                            }
+                                            if (!f) {
+                                                for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
+                                                    if (entry.getValue().containsKey(aa.get(i + 1))) {
+                                                        entry.getValue().put(aa.get(i + 1), true);
+                                                    }
+                                                }
                                             }
                                             keyModMap.put(aa.get(i + 1), true);
                                             map.put(aa.get(i + 1), aa.get(i + 2));
@@ -723,15 +736,14 @@ public class Main {
                                                     continue;
                                                 }
 
-                                                List<String> watchedKeys = watchMap.getOrDefault(Thread.currentThread().getName(), null);
+                                                Map<String, Boolean> watchedKeys = watchMap.getOrDefault(Thread.currentThread().getName(), null);
                                                 boolean isWatched = watchedKeys != null;
 
                                                 if (isWatched) {
                                                     boolean dontDo = false;
-                                                    for (String k : watchedKeys) {
-                                                        if (keyModMap.containsKey(k) && keyModMap.get(k)) {
+                                                    for (Map.Entry<String, Boolean> k : watchedKeys.entrySet()) {
+                                                        if (k.getValue()) {
                                                             dontDo = true;
-                                                            keyModMap.clear();
                                                             break;
                                                         }
                                                     }
@@ -816,7 +828,13 @@ public class Main {
                                                 printWriter.print("-ERR WATCH inside MULTI is not allowed\r\n");
                                             } else {
                                                 String key = aa.get(i + 1);
-                                                watchMap.put(Thread.currentThread().getName(), new ArrayList<>(Arrays.asList(key)));
+                                                List<String> keys = Arrays.asList(key);
+                                                Map<String, Boolean> keyMod = new HashMap<>();
+                                                for (String k : keys) {
+                                                    keyMod.put(k, false);
+                                                }
+                                                watchMap.put(Thread.currentThread().getName(), keyMod);
+
                                                 printWriter.print("+OK\r\n");
                                             }
                                             printWriter.flush();
