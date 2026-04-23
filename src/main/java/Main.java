@@ -728,14 +728,14 @@ public class Main {
 
                                                 if (isWatched) {
                                                     boolean dontDo = false;
-                                                    for (String s : que) {
-                                                        String k = s.split(" ")[1];
-                                                        if (watchedKeys.contains(k) && keyModMap.containsKey(k) && keyModMap.get(k)) {
+                                                    for (String k : watchedKeys) {
+                                                        if (keyModMap.containsKey(k) && keyModMap.get(k)) {
                                                             dontDo = true;
-                                                            keyModMap.remove(k);
+                                                            keyModMap.clear();
                                                             break;
                                                         }
                                                     }
+
                                                     if (dontDo) {
                                                         printWriter.print("*-1\r\n");
                                                         printWriter.flush();
