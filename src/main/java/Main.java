@@ -47,6 +47,10 @@ public class Main {
 
           Map<String, Queue<String>> multiMap = new ConcurrentHashMap<>();
 
+          Map<String, List<String>> watchMap = new ConcurrentHashMap<>();
+
+          Map<String, Boolean> keyModMap = new ConcurrentHashMap<>();
+
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -96,8 +100,10 @@ public class Main {
                                                 Date date = aa.get(i + 3).equalsIgnoreCase("px")
                                                         ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
                                                         : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
+                                                keyModMap.put(aa.get(i + 1), true);
                                                 mapTime.put(aa.get(i + 1), date);
                                             }
+                                            keyModMap.put(aa.get(i + 1), true);
                                             map.put(aa.get(i + 1), aa.get(i + 2));
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
@@ -716,6 +722,29 @@ public class Main {
                                                     multiMap.remove(Thread.currentThread().getName());
                                                     continue;
                                                 }
+
+                                                List<String> watchedKeys = watchMap.getOrDefault(Thread.currentThread().getName(), null);
+                                                boolean isWatched = watchedKeys != null;
+
+                                                if (isWatched) {
+                                                    boolean dontDo = false;
+                                                    for (String s : que) {
+                                                        String k = s.split(" ")[1];
+                                                        if (watchedKeys.contains(k) && keyModMap.containsKey(k) && keyModMap.get(k)) {
+                                                            dontDo = true;
+                                                            keyModMap.remove(k);
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (dontDo) {
+                                                        printWriter.print("*-1\r\n");
+                                                        printWriter.flush();
+                                                        multiMap.remove(Thread.currentThread().getName());
+                                                        watchMap.remove(Thread.currentThread().getName());
+                                                        continue;
+                                                    }
+                                                }
+
                                                 StringBuffer sb = new StringBuffer();
                                                 sb.append("*" + que.size() + "\r\n");
                                                 while (!que.isEmpty()) {
@@ -786,6 +815,8 @@ public class Main {
                                             if (que != null) {
                                                 printWriter.print("-ERR WATCH inside MULTI is not allowed\r\n");
                                             } else {
+                                                String key = aa.get(i + 1);
+                                                watchMap.put(Thread.currentThread().getName(), new ArrayList<>(Arrays.asList(key)));
                                                 printWriter.print("+OK\r\n");
                                             }
                                             printWriter.flush();
