@@ -656,9 +656,16 @@ public class Main {
                                         } else if (aa.get(i).equals("INCR")) {
                                             String key = aa.get(i + 1);
                                             if (map.containsKey(key)) {
-                                                int val = Integer.parseInt(map.get(key));
+                                                int val = 0;
+                                                try {
+                                                    val = Integer.parseInt(map.get(key));
+                                                } catch (NumberFormatException e) {
+                                                    printWriter.print("-ERR value is not an integer or out of range\r\n");
+                                                    printWriter.flush();
+                                                    continue;
+                                                }
                                                 map.put(key, String.valueOf(val + 1));
-                                                printWriter.print(":" + (val + 1) + "\r\n");
+                                                printWriter.print(":" + val + 1 + "\r\n");
                                                 printWriter.flush();
                                             } else {
                                                 map.put(key, "1");
