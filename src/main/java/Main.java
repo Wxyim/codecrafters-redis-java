@@ -767,6 +767,16 @@ public class Main {
                                                 printWriter.print("-ERR EXEC without MULTI\r\n");
                                                 printWriter.flush();
                                             }
+                                        } else if (aa.get(i).equals("DISCARD")) {
+                                            if (multiMap.containsKey(Thread.currentThread().getName()) && multiMap.get(Thread.currentThread().getName())) {
+                                                printWriter.print("+OK\r\n");
+                                                multiMap.remove(Thread.currentThread().getName());
+                                                que.clear();
+                                            } else {
+                                                printWriter.print("-ERR DISCARD without MULTI\r\n");
+                                            }
+
+                                            printWriter.flush();
                                         }
 
 
