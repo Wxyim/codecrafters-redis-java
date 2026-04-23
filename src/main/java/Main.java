@@ -701,6 +701,11 @@ public class Main {
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("EXEC")) {
                                             if (multiMap.containsKey(Thread.currentThread().getName()) && multiMap.get(Thread.currentThread().getName())) {
+                                                if (que.isEmpty()) {
+                                                    printWriter.print("*0\r\n");
+                                                    printWriter.flush();
+                                                    continue;
+                                                }
                                                 while (!que.isEmpty()) {
                                                     String[] task = que.poll().split(" ");
                                                     if (task[0].equals("SET")) {
