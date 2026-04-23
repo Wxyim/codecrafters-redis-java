@@ -659,6 +659,7 @@ public class Main {
                                                 int val = Integer.parseInt(map.get(key));
                                                 map.put(key, String.valueOf(val + 1));
                                                 printWriter.print(":" + (val + 1) + "\r\n");
+                                                printWriter.flush();
                                             } else {
                                                 printWriter.print("");
                                                 printWriter.flush();
