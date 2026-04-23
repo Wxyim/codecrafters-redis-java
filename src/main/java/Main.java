@@ -45,6 +45,11 @@ public class Main {
 
           Map<String, String> streamDolorMap = new ConcurrentHashMap<>();
 
+          Map<String, Boolean> multiMap = new ConcurrentHashMap<>();
+
+          Queue<String> que = new LinkedList<>();
+
+
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 new Thread(() -> {
@@ -75,6 +80,17 @@ public class Main {
                                             printWriter.print("$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1) + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("SET")) {
+                                            if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
+                                                printWriter.print("+QUEUED\r\n");
+                                                printWriter.flush();
+                                                if (i + 3 < aa.size()) {
+                                                    que.add(aa.get(i) + " " + aa.get(i + 1) + " " + aa.get(i + 2) + " "
+                                                            + aa.get(i + 3) + " " + aa.get(i + 4));
+                                                } else {
+                                                    que.add(aa.get(i) + " " + aa.get(i + 1) + " " + aa.get(i + 2));
+                                                }
+                                                continue;
+                                            }
                                             if (i + 3 < aa.size()
                                                     && (aa.get(i + 3).equalsIgnoreCase("px")
                                                     || aa.get(i + 3).equalsIgnoreCase("ex"))) {
@@ -654,6 +670,12 @@ public class Main {
 
 
                                         } else if (aa.get(i).equals("INCR")) {
+                                            if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
+                                                printWriter.print("+QUEUED\r\n");
+                                                printWriter.flush();
+                                                que.add(aa.get(i) + " " + aa.get(i + 1));
+                                                continue;
+                                            }
                                             String key = aa.get(i + 1);
                                             if (map.containsKey(key)) {
                                                 int val = 0;
@@ -674,10 +696,50 @@ public class Main {
                                             }
 
                                         } else if (aa.get(i).equals("MULTI")) {
-
-
+                                            multiMap.put(Thread.currentThread().getName(), true);
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equals("EXEC")) {
+                                            if (multiMap.containsKey(Thread.currentThread().getName()) && multiMap.get(Thread.currentThread().getName())) {
+                                                while (!que.isEmpty()) {
+                                                    String[] task = que.poll().split(" ");
+                                                    if (task[0].equals("SET")) {
+                                                        if (task.length > 3
+                                                                && (task[3].equalsIgnoreCase("px")
+                                                                || task[3].equalsIgnoreCase("ex"))) {
+                                                            Date date = task[3].equalsIgnoreCase("px")
+                                                                    ? new Date(System.currentTimeMillis() + Long.parseLong(task[4]))
+                                                                    : new Date(System.currentTimeMillis() + Long.parseLong(task[4]) * 1000);
+                                                            mapTime.put(task[1], date);
+                                                        }
+                                                        map.put(task[1], task[2]);
+                                                        printWriter.print("+OK" + "\r\n");
+                                                        printWriter.flush();
+                                                    } else if (task[0].equals("INCR")) {
+                                                        String key = task[1];
+                                                        if (map.containsKey(key)) {
+                                                            int val = 0;
+                                                            try {
+                                                                val = Integer.parseInt(map.get(key));
+                                                            } catch (NumberFormatException e) {
+                                                                printWriter.print("-ERR value is not an integer or out of range\r\n");
+                                                                printWriter.flush();
+                                                                continue;
+                                                            }
+                                                            map.put(key, String.valueOf(val + 1));
+                                                            printWriter.print(":" + (val + 1) + "\r\n");
+                                                            printWriter.flush();
+                                                        } else {
+                                                            map.put(key, "1");
+                                                            printWriter.print(":1\r\n");
+                                                            printWriter.flush();
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                printWriter.print("-ERR EXEC without MULTI\\r\\n");
+                                                printWriter.flush();
+                                            }
                                         }
 
 
