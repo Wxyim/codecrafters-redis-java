@@ -737,7 +737,7 @@ public class Main {
                                                     }
                                                 }
                                             } else {
-                                                printWriter.print("-ERR EXEC without MULTI\\r\\n");
+                                                printWriter.print("-ERR EXEC without MULTI\r\n");
                                                 printWriter.flush();
                                             }
                                         }
