@@ -103,6 +103,12 @@ public class Main {
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
+                                            if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
+                                                printWriter.print("+QUEUED\r\n");
+                                                printWriter.flush();
+                                                que.add(aa.get(i) + " " + aa.get(i + 1) + " " + aa.get(i + 2));
+                                                continue;
+                                            }
                                             if (map.containsKey(aa.get(i + 1)) && !mapTime.containsKey(aa.get(i + 1))) {
                                                 printWriter.print("$" + map.get(aa.get(i + 1)).length() + "\r\n" + map.get(aa.get(i + 1)) + "\r\n");
                                                 printWriter.flush();
@@ -738,6 +744,24 @@ public class Main {
                                                         } else {
                                                             map.put(key, "1");
                                                             printWriter.print(":1\r\n");
+                                                            printWriter.flush();
+                                                        }
+                                                    } else if (task[0].equals("GET")) {
+                                                        if (map.containsKey(task[1]) && !mapTime.containsKey(task[1])) {
+                                                            printWriter.print("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
+                                                            printWriter.flush();
+                                                        } else if (map.containsKey(task[1]) && mapTime.containsKey(task[1])) {
+                                                            if (mapTime.get(task[1]).before(new Date())) {
+                                                                printWriter.print("$-1\r\n");
+                                                                printWriter.flush();
+                                                                map.remove(aa.get(i + 1));
+                                                                mapTime.remove(aa.get(i + 1));
+                                                            } else {
+                                                                printWriter.print("$" + map.get(task[1]).length() + "\r\n" + map.get(task[1]) + "\r\n");
+                                                                printWriter.flush();
+                                                            }
+                                                        } else {
+                                                            printWriter.print("$-1\r\n");
                                                             printWriter.flush();
                                                         }
                                                     }
