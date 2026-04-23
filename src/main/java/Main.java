@@ -742,6 +742,7 @@ public class Main {
                                                         }
                                                     }
                                                 }
+                                                multiMap.remove(Thread.currentThread().getName());
                                             } else {
                                                 printWriter.print("-ERR EXEC without MULTI\r\n");
                                                 printWriter.flush();
