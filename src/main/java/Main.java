@@ -653,7 +653,20 @@ public class Main {
                                             }
 
 
+                                        } else if (aa.get(i).equals("INCR")) {
+                                            String key = aa.get(i + 1);
+                                            if (map.containsKey(key)) {
+                                                int val = Integer.parseInt(key);
+                                                map.put(key, String.valueOf(val + 1));
+                                                printWriter.print(":" + (val + 1) + "\r\n");
+                                            } else {
+                                                printWriter.print("");
+                                                printWriter.flush();
+                                            }
+
                                         }
+
+
                                     }
                                 } else {
                                     printWriter.flush();
