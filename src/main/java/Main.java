@@ -704,6 +704,7 @@ public class Main {
                                                 if (que.isEmpty()) {
                                                     printWriter.print("*0\r\n");
                                                     printWriter.flush();
+                                                    multiMap.remove(Thread.currentThread().getName());
                                                     continue;
                                                 }
                                                 while (!que.isEmpty()) {
