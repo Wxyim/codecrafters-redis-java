@@ -817,7 +817,7 @@ public class Main {
                                             } else {
                                                 printWriter.print("-ERR DISCARD without MULTI\r\n");
                                             }
-
+                                            watchMap.remove(Thread.currentThread().getName());
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("WATCH")) {
                                             Queue<String> que = multiMap.get(Thread.currentThread().getName());
