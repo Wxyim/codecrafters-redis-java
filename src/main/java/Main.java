@@ -824,8 +824,10 @@ public class Main {
                                             if (que != null) {
                                                 printWriter.print("-ERR WATCH inside MULTI is not allowed\r\n");
                                             } else {
-                                                String key = aa.get(i + 1);
-                                                List<String> keys = Arrays.asList(key);
+                                                List<String> keys = new ArrayList<>();
+                                                for (int a = 0; a < length - 1; a++) {
+                                                    keys.add(aa.get(i + a + 1));
+                                                }
                                                 Map<String, Boolean> keyMod = new HashMap<>();
                                                 for (String k : keys) {
                                                     keyMod.put(k, false);
