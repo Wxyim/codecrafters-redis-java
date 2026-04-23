@@ -106,7 +106,7 @@ public class Main {
                                             if (multiMap.get(Thread.currentThread().getName()) != null && multiMap.get(Thread.currentThread().getName())) {
                                                 printWriter.print("+QUEUED\r\n");
                                                 printWriter.flush();
-                                                que.add(aa.get(i) + " " + aa.get(i + 1) + " " + aa.get(i + 2));
+                                                que.add(aa.get(i) + " " + aa.get(i + 1));
                                                 continue;
                                             }
                                             if (map.containsKey(aa.get(i + 1)) && !mapTime.containsKey(aa.get(i + 1))) {
