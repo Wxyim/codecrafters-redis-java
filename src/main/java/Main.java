@@ -781,6 +781,9 @@ public class Main {
                                             }
 
                                             printWriter.flush();
+                                        } else if (aa.get(i).equals("WATCH")) {
+                                            printWriter.print("+OK\r\n");
+                                            printWriter.flush();
                                         }
 
 
