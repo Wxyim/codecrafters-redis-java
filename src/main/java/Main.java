@@ -782,7 +782,12 @@ public class Main {
 
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("WATCH")) {
-                                            printWriter.print("+OK\r\n");
+                                            Queue<String> que = multiMap.get(Thread.currentThread().getName());
+                                            if (que != null) {
+                                                printWriter.print("-ERR WATCH inside MULTI is not allowed\r\n");
+                                            } else {
+                                                printWriter.print("+OK\r\n");
+                                            }
                                             printWriter.flush();
                                         }
 
