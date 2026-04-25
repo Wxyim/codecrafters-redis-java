@@ -841,6 +841,9 @@ public class Main {
                                             watchMap.remove(Thread.currentThread().getName());
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equals("INFO")) {
+                                            printWriter.print("$11\r\nrole:master\r\n");
+                                            printWriter.flush();
                                         }
 
 
