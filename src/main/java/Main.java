@@ -857,7 +857,7 @@ public class Main {
                                             } else {
                                                 printWriter.print("$11\r\nrole:master\r\n");
                                                 printWriter.print("$54\r\nmaster_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb\r\n");
-                                                printWriter.print("20\r\nmaster_repl_offset:0\r\n");
+                                                printWriter.print("$20\r\nmaster_repl_offset:0\r\n");
                                             }
                                             printWriter.flush();
                                         }
