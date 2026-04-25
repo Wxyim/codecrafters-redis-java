@@ -32,6 +32,8 @@ public class Main {
 
         Socket mainSocket = null;
 
+        Map<String, PrintWriter> pwMap = new ConcurrentHashMap<>();
+
         try {
           serverSocket = new ServerSocket(port);
           // Since the tester restarts your program quite often, setting SO_REUSEADDR
@@ -58,36 +60,36 @@ public class Main {
                           String message;
                           while ((message = bufferedReader.readLine()) != null) {
                               if (message.startsWith("*")) {
-                                  int length = Integer.parseInt(message.substring(1));
-                                  if (length > 0) {
-                                      List<String> aa = new ArrayList<>();
-                                      for (int i = 0; i < length; i++) {
-                                          int l = Integer.parseInt(bufferedReader.readLine().substring(1));
-                                          if (l == -1) {
-                                              aa.add(null);
-                                              continue;
-                                          }
-                                          String m = bufferedReader.readLine();
-                                          aa.add(m);
-                                      }
-
-                                      for (int i = 0; i < aa.size(); i++) {
-                                          if (aa.get(i).equals("SET")) {
-                                              boolean f = false;
-                                              if (i + 3 < aa.size()
-                                                      && (aa.get(i + 3).equalsIgnoreCase("px")
-                                                      || aa.get(i + 3).equalsIgnoreCase("ex"))) {
-                                                  Date date = aa.get(i + 3).equalsIgnoreCase("px")
-                                                          ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
-                                                          : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
-                                                  replMapTime.put(aa.get(i + 1), date);
-                                              }
-                                              replMap.put(aa.get(i + 1), aa.get(i + 2));
-                                              printWriter.print("+OK" + "\r\n");
-                                              printWriter.flush();
-                                          }
-                                      }
-                                  }
+//                                  int length = Integer.parseInt(message.substring(1));
+//                                  if (length > 0) {
+//                                      List<String> aa = new ArrayList<>();
+//                                      for (int i = 0; i < length; i++) {
+//                                          int l = Integer.parseInt(bufferedReader.readLine().substring(1));
+//                                          if (l == -1) {
+//                                              aa.add(null);
+//                                              continue;
+//                                          }
+//                                          String m = bufferedReader.readLine();
+//                                          aa.add(m);
+//                                      }
+//
+//                                      for (int i = 0; i < aa.size(); i++) {
+//                                          if (aa.get(i).equals("SET")) {
+//                                              boolean f = false;
+//                                              if (i + 3 < aa.size()
+//                                                      && (aa.get(i + 3).equalsIgnoreCase("px")
+//                                                      || aa.get(i + 3).equalsIgnoreCase("ex"))) {
+//                                                  Date date = aa.get(i + 3).equalsIgnoreCase("px")
+//                                                          ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
+//                                                          : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
+//                                                  replMapTime.put(aa.get(i + 1), date);
+//                                              }
+//                                              replMap.put(aa.get(i + 1), aa.get(i + 2));
+//                                              printWriter.print("+OK" + "\r\n");
+//                                              printWriter.flush();
+//                                          }
+//                                      }
+//                                  }
                               } else if (message.startsWith("+PONG")) {
                                   if (repl) {
                                       printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
@@ -199,6 +201,11 @@ public class Main {
                                                 }
                                                 f = true;
                                                 mapTime.put(aa.get(i + 1), date);
+                                                pwMap.get("repl").print("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
+                                                        + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
+                                                        + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
+                                                pwMap.get("repl").flush();
                                             }
                                             if (!f) {
                                                 for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
@@ -208,6 +215,9 @@ public class Main {
                                                 }
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
+                                            pwMap.get("repl").print("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                            pwMap.get("repl").flush();
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
@@ -956,6 +966,7 @@ public class Main {
                                             clientSocket.getOutputStream().write(("$" + bytes.length + "\r\n").getBytes());
                                             clientSocket.getOutputStream().write(bytes);
                                             clientSocket.getOutputStream().flush();
+                                            pwMap.put("repl", printWriter);
                                         }
 
 
