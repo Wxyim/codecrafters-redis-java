@@ -3,7 +3,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -16,7 +15,18 @@ public class Main {
 
     //  Uncomment the code below to pass the first stage
         ServerSocket serverSocket = null;
-        int port = args.length >= 2 && args[0].equals("--port") ? Integer.parseInt(args[1]) : 6379;
+
+        Map<String, Object> argsMap = new HashMap<>();
+
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("--port")) {
+                argsMap.put("port", Integer.parseInt(args[i + 1]));
+            } else if (args[i].equals("--replicaof")) {
+                argsMap.put("replicaof", args[i + 1]);
+            }
+        }
+
+        int port = argsMap.containsKey("port") ? (int) argsMap.get("port") : 6379;
 
         List<Socket> clients = new ArrayList<>();
 
@@ -842,7 +852,11 @@ public class Main {
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("INFO")) {
-                                            printWriter.print("$11\r\nrole:master\r\n");
+                                            if (argsMap.containsKey("replicaof")) {
+                                                printWriter.print("$10\r\nrole:slave\r\n");
+                                            } else {
+                                                printWriter.print("$11\r\nrole:master\r\n");
+                                            }
                                             printWriter.flush();
                                         }
 
