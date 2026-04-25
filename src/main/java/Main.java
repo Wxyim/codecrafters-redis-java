@@ -47,6 +47,25 @@ public class Main {
                    PrintWriter printWriter = new PrintWriter(mainSocket.getOutputStream(), true)) {
                   printWriter.print("*1\r\n$4\r\nPING\r\n");
                   printWriter.flush();
+                  boolean repl = true;
+                  String message;
+                  while ((message = bufferedReader.readLine()) != null) {
+                      if (message.startsWith("*")) {
+
+                      } else if (message.startsWith("+PONG")) {
+                          if (repl) {
+                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n");
+                              printWriter.flush();
+                          }
+
+                      } else if (message.startsWith("+OK")) {
+                          if (repl) {
+                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
+                              printWriter.flush();
+                              repl = false;
+                          }
+                      }
+                  }
               } finally {
 
               }
@@ -411,7 +430,7 @@ public class Main {
                                                     t = en.contains("-") ? Long.parseLong(en.substring(0, en.lastIndexOf("-"))) : Long.parseLong(en);
                                                     ti = en.contains("-") ? Long.parseLong(en.substring(en.lastIndexOf("-") + 1)) : Long.MAX_VALUE;
                                                 }
-                                                
+
                                                 CopyOnWriteArrayList<ConcurrentHashMap<String, Object>> resList = new CopyOnWriteArrayList<>();
                                                 for (int x = 0; x < tmpList.size(); x++) {
                                                     String idString = String.valueOf(tmpList.get(x).get("id"));
