@@ -852,14 +852,16 @@ public class Main {
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("INFO")) {
+                                            StringBuilder infoBuilder = new StringBuilder();
                                             if (argsMap.containsKey("replicaof")) {
-                                                printWriter.print("$10\r\nrole:slave\r\n");
+                                                infoBuilder.append("role:slave");
                                             } else {
-                                                printWriter.print("*3\r\n");
-                                                printWriter.print("$11\r\nrole:master\r\n");
-                                                printWriter.print("$54\r\nmaster_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb\r\n");
-                                                printWriter.print("$20\r\nmaster_repl_offset:0\r\n");
+                                                infoBuilder.append("role:master\r\n");
+                                                infoBuilder.append("master_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb\r\n");
+                                                infoBuilder.append("master_repl_offset:0");
                                             }
+                                            String info = infoBuilder.toString();
+                                            printWriter.print("$" + info.length() + "\r\n" + info + "\r\n");
                                             printWriter.flush();
                                         }
 
