@@ -921,8 +921,10 @@ public class Main {
                                         } else if (aa.get(i).equals("PSYNC")) {
                                             printWriter.print("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n");
                                             printWriter.flush();
-                                            printWriter.print("$176\r\n524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2");
-                                            printWriter.flush();
+                                            byte[] bytes = hexStringToByteArray("524544495330303131fe00ff0000000000000000");
+                                            clientSocket.getOutputStream().write(("$" + bytes.length + "\r\n").getBytes());
+                                            clientSocket.getOutputStream().write(bytes);
+                                            clientSocket.getOutputStream().flush();
                                         }
 
 
@@ -948,4 +950,14 @@ public class Main {
         } finally {
         }
   }
+
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i+1), 16));
+        }
+        return data;
+    }
 }
