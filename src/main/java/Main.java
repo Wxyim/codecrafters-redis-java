@@ -921,6 +921,8 @@ public class Main {
                                         } else if (aa.get(i).equals("PSYNC")) {
                                             printWriter.print("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n");
                                             printWriter.flush();
+                                            printWriter.print("$120\r\nUkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog==");
+                                            printWriter.flush();
                                         }
 
 
