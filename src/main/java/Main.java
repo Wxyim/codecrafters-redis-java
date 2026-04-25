@@ -32,6 +32,8 @@ public class Main {
 
         Socket mainSocket = null;
 
+        Map<String, Object> replMap = new HashMap<>();
+
         try {
           serverSocket = new ServerSocket(port);
           // Since the tester restarts your program quite often, setting SO_REUSEADDR
@@ -73,7 +75,9 @@ public class Main {
                                       printWriter.flush();
                                   }
                               } else if (message.startsWith("+FULLRESYNC")) {
-
+                                  String[] r = message.split(" ");
+                                  replMap.put("repl_id", r[1]);
+                                  replMap.put("repl_offset", r[2]);
                               }
                           }
                       } finally {
@@ -913,6 +917,9 @@ public class Main {
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("REPLCONF")) {
                                             printWriter.print("+OK\r\n");
+                                            printWriter.flush();
+                                        } else if (aa.get(i).equals("PSYNC")) {
+                                            printWriter.print("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n");
                                             printWriter.flush();
                                         }
 
