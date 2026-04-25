@@ -16,7 +16,7 @@ public class Main {
 
     //  Uncomment the code below to pass the first stage
         ServerSocket serverSocket = null;
-        int port = System.getenv("PORT") != null ? Integer.parseInt(System.getenv("PORT")) : 6379;
+        int port = args.length >= 2 && args[0].equals("--port") ? Integer.parseInt(args[1]) : 6379;
 
         List<Socket> clients = new ArrayList<>();
 
