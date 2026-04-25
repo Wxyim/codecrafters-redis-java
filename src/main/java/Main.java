@@ -30,7 +30,6 @@ public class Main {
 
         List<Socket> clients = new ArrayList<>();
 
-        ServerSocket mainServerSocket = null;
         Socket mainSocket = null;
 
         try {
@@ -43,44 +42,47 @@ public class Main {
 
           if (argsMap.containsKey("replicaof")) {
               String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
-              if (mainHost[0].equals("localhost") || mainHost[0].equals("127.0.0.1")) {
-//                  mainServerSocket = new ServerSocket(Integer.parseInt(mainHost[1]));
-              }
-              mainSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
-              try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mainSocket.getInputStream()));
-                   PrintWriter printWriter = new PrintWriter(mainSocket.getOutputStream(), true)) {
-                  printWriter.print("*1\r\n$4\r\nPING\r\n");
-                  printWriter.flush();
-                  boolean repl = true;
-                  boolean flag = false;
-                  String message;
-                  while ((message = bufferedReader.readLine()) != null) {
-                      if (message.startsWith("*")) {
+              new Thread(() -> {
+                  try {
+                      Socket masterSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
+                      try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream()));
+                           PrintWriter printWriter = new PrintWriter(masterSocket.getOutputStream(), true)) {
+                          printWriter.print("*1\r\n$4\r\nPING\r\n");
+                          printWriter.flush();
+                          boolean repl = true;
+                          boolean flag = false;
+                          String message;
+                          while ((message = bufferedReader.readLine()) != null) {
+                              if (message.startsWith("*")) {
 
-                      } else if (message.startsWith("+PONG")) {
-                          if (repl) {
-                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n");
-                              printWriter.flush();
-                          }
+                              } else if (message.startsWith("+PONG")) {
+                                  if (repl) {
+                                      printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
+                                      printWriter.flush();
+                                  }
 
-                      } else if (message.startsWith("+OK")) {
-                          if (repl) {
-                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
-                              printWriter.flush();
-                              repl = false;
-                              flag = true;
-                          }
-                          if (flag) {
-                              printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
-                              printWriter.flush();
-                          }
-                      } else if (message.startsWith("+FULLRESYNC")) {
+                              } else if (message.startsWith("+OK")) {
+                                  if (repl) {
+                                      printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
+                                      printWriter.flush();
+                                      repl = false;
+                                      flag = true;
+                                  }
+                                  if (flag) {
+                                      printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
+                                      printWriter.flush();
+                                  }
+                              } else if (message.startsWith("+FULLRESYNC")) {
 
+                              }
+                          }
+                      } finally {
+                          masterSocket.close();
                       }
+                  } catch (IOException e) {
+                      System.out.println("IOException in replica handshake: " + e.getMessage());
                   }
-              } finally {
-
-              }
+              }).start();
           }
 
           Map<String, String> map = new ConcurrentHashMap<>();
