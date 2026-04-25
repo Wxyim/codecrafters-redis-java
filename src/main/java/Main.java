@@ -911,6 +911,9 @@ public class Main {
                                             String info = infoBuilder.toString();
                                             printWriter.print("$" + info.length() + "\r\n" + info + "\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equals("REPLCONF")) {
+                                            printWriter.print("+OK\r\n");
+                                            printWriter.flush();
                                         }
 
 
