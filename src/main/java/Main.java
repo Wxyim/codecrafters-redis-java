@@ -48,6 +48,7 @@ public class Main {
                   printWriter.print("*1\r\n$4\r\nPING\r\n");
                   printWriter.flush();
                   boolean repl = true;
+                  boolean flag = false;
                   String message;
                   while ((message = bufferedReader.readLine()) != null) {
                       if (message.startsWith("*")) {
@@ -63,7 +64,14 @@ public class Main {
                               printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
                               printWriter.flush();
                               repl = false;
+                              flag = true;
                           }
+                          if (flag) {
+                              printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
+                              printWriter.flush();
+                          }
+                      } else if (message.startsWith("+FULLRESYNC")) {
+                          
                       }
                   }
               } finally {
