@@ -43,8 +43,8 @@ public class Main {
 
           if (argsMap.containsKey("replicaof")) {
               String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
-              if (mainHost[0].equals("localhost") || mainHost.equals("127.0.0.1")) {
-                  mainServerSocket = new ServerSocket(Integer.parseInt(mainHost[1]));
+              if (mainHost[0].equals("localhost") || mainHost[0].equals("127.0.0.1")) {
+//                  mainServerSocket = new ServerSocket(Integer.parseInt(mainHost[1]));
               }
               mainSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
               try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mainSocket.getInputStream()));
