@@ -30,12 +30,27 @@ public class Main {
 
         List<Socket> clients = new ArrayList<>();
 
+        Socket mainSocket = null;
+
         try {
           serverSocket = new ServerSocket(port);
           // Since the tester restarts your program quite often, setting SO_REUSEADDR
           // ensures that we don't run into 'Address already in use' errors
           serverSocket.setReuseAddress(true);
           // Wait for connection from client.
+
+
+          if (argsMap.containsKey("replicaof")) {
+              String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
+              mainSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
+              try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mainSocket.getInputStream()));
+                   PrintWriter printWriter = new PrintWriter(mainSocket.getOutputStream(), true)) {
+                  printWriter.print("*1\r\n$4\r\nPING\r\n");
+                  printWriter.flush();
+              } finally {
+
+              }
+          }
 
           Map<String, String> map = new ConcurrentHashMap<>();
 
