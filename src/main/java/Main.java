@@ -201,11 +201,13 @@ public class Main {
                                                 }
                                                 f = true;
                                                 mapTime.put(aa.get(i + 1), date);
-                                                pwMap.get("repl").print("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
-                                                        + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
-                                                        + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
-                                                pwMap.get("repl").flush();
+                                                if (pwMap.get("repl") != null) {
+                                                    pwMap.get("repl").print("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
+                                                            + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
+                                                            + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
+                                                    pwMap.get("repl").flush();
+                                                }
                                             }
                                             if (!f) {
                                                 for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
@@ -215,9 +217,11 @@ public class Main {
                                                 }
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
-                                            pwMap.get("repl").print("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
-                                            pwMap.get("repl").flush();
+                                            if (pwMap.get("repl") != null) {
+                                                pwMap.get("repl").print("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                pwMap.get("repl").flush();
+                                            }
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
