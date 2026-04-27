@@ -57,6 +57,7 @@ public class Main {
                       try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream(), StandardCharsets.ISO_8859_1));
                            PrintWriter printWriter = new PrintWriter(masterSocket.getOutputStream(), true)) {
                           long offset = 0;
+                          long commandStartOffset = 0;
 
                           // 1. 发送 PING
                           printWriter.print("*1\r\n$4\r\nPING\r\n");
@@ -66,7 +67,10 @@ public class Main {
                           String message;
                           
                           while ((message = bufferedReader.readLine()) != null) {
-                              offset = offset + message.length() + 2;
+                              if (handshakeState == 4) {
+                                  commandStartOffset = offset;
+                                  offset = offset + message.length() + 2;
+                              }
                               if (handshakeState == 0 && message.startsWith("+PONG")) {
                                   printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
                                   printWriter.flush();
@@ -90,6 +94,7 @@ public class Main {
                                       }
                                   }
                                   handshakeState = 4;
+                                  offset = 0;
                               } else if (message.startsWith("*")) {
                                   // 处理主节点传播的命令
                                   int length = Integer.parseInt(message.substring(1));
@@ -98,12 +103,18 @@ public class Main {
                                       for (int i = 0; i < length; i++) {
                                           String lenLine = bufferedReader.readLine();
                                           if (lenLine == null) break;
+                                          if (handshakeState == 4) {
+                                              offset += lenLine.length() + 2;
+                                          }
                                           int l = Integer.parseInt(lenLine.substring(1));
                                           if (l == -1) {
                                               aa.add(null);
                                               continue;
                                           }
                                           String m = bufferedReader.readLine();
+                                          if (handshakeState == 4) {
+                                              offset += m.length() + 2;
+                                          }
                                           aa.add(m);
                                       }
 
@@ -119,8 +130,8 @@ public class Main {
                                               }
                                               replMap.put(aa.get(i + 1), aa.get(i + 2));
                                           } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
-                                              long val = offset - 4 - 14 - 12 - 7;
-                                              if ("getack".equalsIgnoreCase(aa.get(i + 1)) && "*".equalsIgnoreCase(aa.get(i + 2))) {
+                                              if (i + 2 < aa.size() && "getack".equalsIgnoreCase(aa.get(i + 1)) && "*".equalsIgnoreCase(aa.get(i + 2))) {
+                                                  long val = commandStartOffset;
                                                   printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
                                                   printWriter.flush();
                                               }
