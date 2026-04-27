@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,8 +32,6 @@ public class Main {
         List<Socket> clients = new ArrayList<>();
 
         Socket mainSocket = null;
-
-        Map<String, PrintWriter> pwMap = new ConcurrentHashMap<>();
 
         try {
           serverSocket = new ServerSocket(port);
@@ -144,10 +143,13 @@ public class Main {
 
           Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
+          Map<String, Socket> clientMap = new ConcurrentHashMap<>();
+          AtomicInteger r = new AtomicInteger(0);
+          BlockingQueue<String> taskQueue = new LinkedBlockingQueue<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                new Thread(() -> {
+                Thread client = new Thread(() -> {
                     try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                          PrintWriter printWriter = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
@@ -201,13 +203,10 @@ public class Main {
                                                 }
                                                 f = true;
                                                 mapTime.put(aa.get(i + 1), date);
-                                                if (pwMap.get("repl") != null) {
-                                                    pwMap.get("repl").print("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
-                                                            + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
-                                                            + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
-                                                    pwMap.get("repl").flush();
-                                                }
+                                                taskQueue.add("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
+                                                        + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
+                                                        + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
                                             }
                                             if (!f) {
                                                 for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
@@ -217,11 +216,9 @@ public class Main {
                                                 }
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
-                                            if (pwMap.get("repl") != null) {
-                                                pwMap.get("repl").print("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
-                                                pwMap.get("repl").flush();
-                                            }
+                                            taskQueue.add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                    + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
@@ -970,7 +967,17 @@ public class Main {
                                             clientSocket.getOutputStream().write(("$" + bytes.length + "\r\n").getBytes());
                                             clientSocket.getOutputStream().write(bytes);
                                             clientSocket.getOutputStream().flush();
-                                            pwMap.put("repl", printWriter);
+                                            clientMap.put(String.valueOf(r.getAndIncrement()), clientSocket);
+
+                                            while (true) {
+                                                String order = taskQueue.take();
+                                                for (Map.Entry<String, Socket> entry : clientMap.entrySet()) {
+                                                    PrintWriter pw = new PrintWriter(entry.getValue().getOutputStream(), true);
+                                                    pw.print(order);
+                                                    pw.flush();
+                                                }
+
+                                            }
                                         }
 
 
@@ -989,7 +996,8 @@ public class Main {
                     }
 
 
-                }).start();
+                });
+                client.start();
             }
         } catch (IOException e) {
           System.out.println("IOException: " + e.getMessage());
