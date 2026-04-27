@@ -133,6 +133,8 @@ public class Main {
 
           Lock streamlock = new ReentrantLock(true);
 
+          Lock tasklock = new ReentrantLock(true);
+
           Map<String, Condition> condList = new ConcurrentHashMap<>();
 
           Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
@@ -143,9 +145,14 @@ public class Main {
 
           Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
-          Map<String, Socket> clientMap = new ConcurrentHashMap<>();
+          Map<String, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
           AtomicInteger r = new AtomicInteger(0);
           BlockingQueue<String> taskQueue = new LinkedBlockingQueue<>();
+
+            AtomicBoolean ready = new AtomicBoolean(false);
+
+            CopyOnWriteArrayList<String> taskList = new CopyOnWriteArrayList<>();
+
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -203,10 +210,12 @@ public class Main {
                                                 }
                                                 f = true;
                                                 mapTime.put(aa.get(i + 1), date);
-                                                taskQueue.add("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
-                                                        + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
-                                                        + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
+                                                for (Map.Entry<String, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                    entry.getValue().add("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
+                                                            + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
+                                                            + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
+                                                }
                                             }
                                             if (!f) {
                                                 for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
@@ -216,8 +225,10 @@ public class Main {
                                                 }
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
-                                            taskQueue.add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                    + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                            for (Map.Entry<String, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                entry.getValue().add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                            }
 
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
@@ -988,16 +999,12 @@ public class Main {
                                             clientSocket.getOutputStream().write(("$" + bytes.length + "\r\n").getBytes());
                                             clientSocket.getOutputStream().write(bytes);
                                             clientSocket.getOutputStream().flush();
-                                            clientMap.put(String.valueOf(r.getAndIncrement()), clientSocket);
 
+                                            clientMap.put(Thread.currentThread().getName(), new LinkedBlockingQueue<>());
                                             while (true) {
-                                                String order = taskQueue.take();
-                                                for (Map.Entry<String, Socket> entry : clientMap.entrySet()) {
-                                                    PrintWriter pw = new PrintWriter(entry.getValue().getOutputStream(), true);
-                                                    pw.print(order);
-                                                    pw.flush();
-                                                }
-
+                                                String task = clientMap.get(Thread.currentThread().getName()).take();
+                                                printWriter.write(task);
+                                                printWriter.flush();
                                             }
                                         }
 
