@@ -1038,6 +1038,9 @@ public class Main {
                                                 printWriter.write(task);
                                                 printWriter.flush();
                                             }
+                                        }  else if (aa.get(i).equals("WAIT")) {
+                                            printWriter.print(":0\r\n");
+                                            printWriter.flush();
                                         }
 
 
