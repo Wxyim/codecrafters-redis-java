@@ -116,6 +116,11 @@ public class Main {
                                                   replMapTime.put(aa.get(i + 1), date);
                                               }
                                               replMap.put(aa.get(i + 1), aa.get(i + 2));
+                                          } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
+                                              if ("getack".equalsIgnoreCase(aa.get(i + 1))) {
+                                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n");
+                                                  printWriter.flush();
+                                              }
                                           }
                                       }
                                   }
