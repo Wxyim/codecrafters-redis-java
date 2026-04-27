@@ -121,7 +121,7 @@ public class Main {
                                           } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
                                               long val = offset - 4 - 14 - 12 - 7;
                                               if ("getack".equalsIgnoreCase(aa.get(i + 1)) && "*".equalsIgnoreCase(aa.get(i + 2))) {
-                                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
+                                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
                                                   printWriter.flush();
                                               }
                                           }
