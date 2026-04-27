@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -18,12 +19,13 @@ public class Main {
         ServerSocket serverSocket = null;
 
         Map<String, Object> argsMap = new HashMap<>();
-
+        AtomicBoolean isReplica = new AtomicBoolean(false);
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--port")) {
                 argsMap.put("port", Integer.parseInt(args[i + 1]));
             } else if (args[i].equals("--replicaof")) {
                 argsMap.put("replicaof", args[i + 1]);
+                isReplica.set(true);
             }
         }
 
@@ -59,36 +61,34 @@ public class Main {
                           String message;
                           while ((message = bufferedReader.readLine()) != null) {
                               if (message.startsWith("*")) {
-//                                  int length = Integer.parseInt(message.substring(1));
-//                                  if (length > 0) {
-//                                      List<String> aa = new ArrayList<>();
-//                                      for (int i = 0; i < length; i++) {
-//                                          int l = Integer.parseInt(bufferedReader.readLine().substring(1));
-//                                          if (l == -1) {
-//                                              aa.add(null);
-//                                              continue;
-//                                          }
-//                                          String m = bufferedReader.readLine();
-//                                          aa.add(m);
-//                                      }
-//
-//                                      for (int i = 0; i < aa.size(); i++) {
-//                                          if (aa.get(i).equals("SET")) {
-//                                              boolean f = false;
-//                                              if (i + 3 < aa.size()
-//                                                      && (aa.get(i + 3).equalsIgnoreCase("px")
-//                                                      || aa.get(i + 3).equalsIgnoreCase("ex"))) {
-//                                                  Date date = aa.get(i + 3).equalsIgnoreCase("px")
-//                                                          ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
-//                                                          : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
-//                                                  replMapTime.put(aa.get(i + 1), date);
-//                                              }
-//                                              replMap.put(aa.get(i + 1), aa.get(i + 2));
-//                                              printWriter.print("+OK" + "\r\n");
-//                                              printWriter.flush();
-//                                          }
-//                                      }
-//                                  }
+                                  int length = Integer.parseInt(message.substring(1));
+                                  if (length > 0) {
+                                      List<String> aa = new ArrayList<>();
+                                      for (int i = 0; i < length; i++) {
+                                          int l = Integer.parseInt(bufferedReader.readLine().substring(1));
+                                          if (l == -1) {
+                                              aa.add(null);
+                                              continue;
+                                          }
+                                          String m = bufferedReader.readLine();
+                                          aa.add(m);
+                                      }
+
+                                      for (int i = 0; i < aa.size(); i++) {
+                                          if (aa.get(i).equals("SET")) {
+                                              boolean f = false;
+                                              if (i + 3 < aa.size()
+                                                      && (aa.get(i + 3).equalsIgnoreCase("px")
+                                                      || aa.get(i + 3).equalsIgnoreCase("ex"))) {
+                                                  Date date = aa.get(i + 3).equalsIgnoreCase("px")
+                                                          ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
+                                                          : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
+                                                  replMapTime.put(aa.get(i + 1), date);
+                                              }
+                                              replMap.put(aa.get(i + 1), aa.get(i + 2));
+                                          }
+                                      }
+                                  }
                               } else if (message.startsWith("+PONG")) {
                                   if (repl) {
                                       printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
@@ -222,6 +222,27 @@ public class Main {
                                             printWriter.print("+OK" + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("GET")) {
+                                            if (isReplica.get()) {
+                                                if (replMap.containsKey(aa.get(i + 1)) && !replMapTime.containsKey(aa.get(i + 1))) {
+                                                    printWriter.print("$" + replMap.get(aa.get(i + 1)).length() + "\r\n" + replMap.get(aa.get(i + 1)) + "\r\n");
+                                                    printWriter.flush();
+                                                } else if (replMap.containsKey(aa.get(i + 1)) && replMapTime.containsKey(aa.get(i + 1))) {
+                                                    if (replMapTime.get(aa.get(i + 1)).before(new Date())) {
+                                                        printWriter.print("$-1\r\n");
+                                                        printWriter.flush();
+                                                        replMap.remove(aa.get(i + 1));
+                                                        replMapTime.remove(aa.get(i + 1));
+                                                    } else {
+                                                        printWriter.print("$" + replMap.get(aa.get(i + 1)).length() + "\r\n" + replMap.get(aa.get(i + 1)) + "\r\n");
+                                                        printWriter.flush();
+                                                    }
+                                                } else {
+                                                    printWriter.print("$-1\r\n");
+                                                    printWriter.flush();
+                                                }
+
+                                                continue;
+                                            }
                                             Queue<String> que = multiMap.get(Thread.currentThread().getName());
                                             if (que != null) {
                                                 printWriter.print("+QUEUED\r\n");
