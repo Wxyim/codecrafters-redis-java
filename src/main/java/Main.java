@@ -56,7 +56,8 @@ public class Main {
                       // 使用 ISO_8859_1 确保二进制数据能按字节正确读取
                       try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream(), StandardCharsets.ISO_8859_1));
                            PrintWriter printWriter = new PrintWriter(masterSocket.getOutputStream(), true)) {
-                          
+                          long offset = 0;
+
                           // 1. 发送 PING
                           printWriter.print("*1\r\n$4\r\nPING\r\n");
                           printWriter.flush();
@@ -65,6 +66,7 @@ public class Main {
                           String message;
                           
                           while ((message = bufferedReader.readLine()) != null) {
+                              offset = offset + message.length() + 2;
                               if (handshakeState == 0 && message.startsWith("+PONG")) {
                                   printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
                                   printWriter.flush();
@@ -117,8 +119,9 @@ public class Main {
                                               }
                                               replMap.put(aa.get(i + 1), aa.get(i + 2));
                                           } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
-                                              if ("getack".equalsIgnoreCase(aa.get(i + 1))) {
-                                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n");
+                                              long val = offset - 4 - 14 - 12 - 7;
+                                              if ("getack".equalsIgnoreCase(aa.get(i + 1)) && "*".equalsIgnoreCase(aa.get(i + 2))) {
+                                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
                                                   printWriter.flush();
                                               }
                                           }
