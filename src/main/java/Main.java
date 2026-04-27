@@ -174,13 +174,13 @@ public class Main {
           Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
           Map<String, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
-          AtomicInteger r = new AtomicInteger(0);
           BlockingQueue<String> taskQueue = new LinkedBlockingQueue<>();
 
             AtomicBoolean ready = new AtomicBoolean(false);
 
             CopyOnWriteArrayList<String> taskList = new CopyOnWriteArrayList<>();
 
+            AtomicInteger replicaCount = new AtomicInteger(0);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -1033,13 +1033,14 @@ public class Main {
                                             clientSocket.getOutputStream().flush();
 
                                             clientMap.put(Thread.currentThread().getName(), new LinkedBlockingQueue<>());
+                                            replicaCount.incrementAndGet();
                                             while (true) {
                                                 String task = clientMap.get(Thread.currentThread().getName()).take();
                                                 printWriter.write(task);
                                                 printWriter.flush();
                                             }
                                         }  else if (aa.get(i).equals("WAIT")) {
-                                            printWriter.print(":0\r\n");
+                                            printWriter.print(":" + replicaCount.get() + "\r\n");
                                             printWriter.flush();
                                         }
 
