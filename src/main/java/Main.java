@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,20 +53,50 @@ public class Main {
               new Thread(() -> {
                   try {
                       Socket masterSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
-                      try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream()));
+                      // 使用 ISO_8859_1 确保二进制数据能按字节正确读取
+                      try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream(), StandardCharsets.ISO_8859_1));
                            PrintWriter printWriter = new PrintWriter(masterSocket.getOutputStream(), true)) {
+                          
+                          // 1. 发送 PING
                           printWriter.print("*1\r\n$4\r\nPING\r\n");
                           printWriter.flush();
-                          boolean repl = true;
-                          boolean flag = false;
+                          
+                          int handshakeState = 0; // 0: PING sent, 1: PORT sent, 2: CAPA sent, 3: PSYNC sent, 4: Commands
                           String message;
+                          
                           while ((message = bufferedReader.readLine()) != null) {
-                              if (message.startsWith("*")) {
+                              if (handshakeState == 0 && message.startsWith("+PONG")) {
+                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
+                                  printWriter.flush();
+                                  handshakeState = 1;
+                              } else if (handshakeState == 1 && message.startsWith("+OK")) {
+                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
+                                  printWriter.flush();
+                                  handshakeState = 2;
+                              } else if (handshakeState == 2 && message.startsWith("+OK")) {
+                                  printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
+                                  printWriter.flush();
+                                  handshakeState = 3;
+                              } else if (message.startsWith("+FULLRESYNC")) {
+                                  // 读取紧随其后的 RDB 文件长度行
+                                  String rdbHeader = bufferedReader.readLine();
+                                  if (rdbHeader != null && rdbHeader.startsWith("$")) {
+                                      int rdbLength = Integer.parseInt(rdbHeader.substring(1));
+                                      // 跳过 RDB 内容
+                                      for (int i = 0; i < rdbLength; i++) {
+                                          if (bufferedReader.read() == -1) break;
+                                      }
+                                  }
+                                  handshakeState = 4;
+                              } else if (message.startsWith("*")) {
+                                  // 处理主节点传播的命令
                                   int length = Integer.parseInt(message.substring(1));
                                   if (length > 0) {
                                       List<String> aa = new ArrayList<>();
                                       for (int i = 0; i < length; i++) {
-                                          int l = Integer.parseInt(bufferedReader.readLine().substring(1));
+                                          String lenLine = bufferedReader.readLine();
+                                          if (lenLine == null) break;
+                                          int l = Integer.parseInt(lenLine.substring(1));
                                           if (l == -1) {
                                               aa.add(null);
                                               continue;
@@ -75,8 +106,7 @@ public class Main {
                                       }
 
                                       for (int i = 0; i < aa.size(); i++) {
-                                          if (aa.get(i).equals("SET")) {
-                                              boolean f = false;
+                                          if ("SET".equalsIgnoreCase(aa.get(i))) {
                                               if (i + 3 < aa.size()
                                                       && (aa.get(i + 3).equalsIgnoreCase("px")
                                                       || aa.get(i + 3).equalsIgnoreCase("ex"))) {
@@ -89,27 +119,6 @@ public class Main {
                                           }
                                       }
                                   }
-                              } else if (message.startsWith("+PONG")) {
-                                  if (repl) {
-                                      printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
-                                      printWriter.flush();
-                                  }
-
-                              } else if (message.startsWith("+OK")) {
-                                  if (repl) {
-                                      printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
-                                      printWriter.flush();
-                                      repl = false;
-                                      flag = true;
-                                  }
-                                  if (flag) {
-                                      printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
-                                      printWriter.flush();
-                                  }
-                              } else if (message.startsWith("+FULLRESYNC")) {
-                                  String[] r = message.split(" ");
-                                  replMap.put("repl_id", r[1]);
-                                  replMap.put("repl_offset", r[2]);
                               }
                           }
                       } finally {
@@ -167,7 +176,9 @@ public class Main {
                                 if (length > 0) {
                                     List<String> aa = new ArrayList<>();
                                     for (int i = 0; i < length; i++) {
-                                        int l = Integer.parseInt(bufferedReader.readLine().substring(1));
+                                        String lenLine = bufferedReader.readLine();
+                                        if (lenLine == null) break;
+                                        int l = Integer.parseInt(lenLine.substring(1));
                                         if (l == -1) {
                                             aa.add(null);
                                             continue;
@@ -225,9 +236,11 @@ public class Main {
                                                 }
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
-                                            for (Map.Entry<String, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                entry.getValue().add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                            if (!f) {
+                                                for (Map.Entry<String, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                    entry.getValue().add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                }
                                             }
 
                                             printWriter.print("+OK" + "\r\n");
