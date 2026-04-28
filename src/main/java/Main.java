@@ -1072,7 +1072,7 @@ public class Main {
                                             long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)));
 
                                             // 向所有副本发送 REPLCONF GETACK *
-                                            String getackCommand = "*3\r\n$8\r\nREPLCONF\r\n$5\r\nGETACK\r\n$1\r\n*\r\n";
+                                            String getackCommand = "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
                                             for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                 entry.getValue().add(getackCommand);
                                             }
