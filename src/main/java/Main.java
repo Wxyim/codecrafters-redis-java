@@ -1069,9 +1069,12 @@ public class Main {
                                             if (i + 2 < aa.size() && "ack".equalsIgnoreCase(aa.get(i + 1))) {
                                                 replAckMap.put(clientSocket.getRemoteSocketAddress().toString(), Long.valueOf(aa.get(i + 2)));
                                             }
-                                            printWriter.print("+OK\r\n");
-                                            printWriter.flush();
-
+                                            if (isReplicaCli.get() && clientMap.containsKey(clientSocket)) {
+                                                clientMap.get(clientSocket).add("+OK\r\n"); // 交给专用写线
+                                            } else {
+                                                printWriter.print("+OK\r\n");
+                                                printWriter.flush();
+                                            }
                                         } else if (aa.get(i).equals("PSYNC")) {
                                             isReplicaCli.set(true);
                                             printWriter.print("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n");
