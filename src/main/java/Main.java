@@ -174,7 +174,11 @@ public class Main {
 
             AtomicInteger replicaCount = new AtomicInteger(0);
 
-            Map<String, Long> replOffsetMap = new ConcurrentHashMap<>();
+            Map<Socket, Long> replOffsetMap = new ConcurrentHashMap<>();
+
+            AtomicInteger masterAck = new AtomicInteger(0);
+
+            Map<String, Long> replAckMap = new ConcurrentHashMap<>();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -236,11 +240,14 @@ public class Main {
                                                 }
                                                 f = true;
                                                 mapTime.put(aa.get(i + 1), date);
+
+                                                String s = "*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
+                                                        + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
+                                                        + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n";
+                                                masterAck.set(masterAck.get() + s.length());
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                    entry.getValue().add("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
-                                                            + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
-                                                            + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n");
+                                                    entry.getValue().add(s);
                                                 }
                                             }
                                             if (!f) {
@@ -252,9 +259,11 @@ public class Main {
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
                                             if (!f) {
+                                                String s = "*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
+                                                        + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n";
+                                                masterAck.set(masterAck.get() + s.length());
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                    entry.getValue().add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
-                                                            + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
+                                                    entry.getValue().add(s);
                                                 }
                                             }
 
@@ -1019,7 +1028,7 @@ public class Main {
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("REPLCONF")) {
                                             if (i + 2 < aa.size() && "ack".equalsIgnoreCase(aa.get(i + 1))) {
-                                                replOffsetMap.put(Thread.currentThread().getName(), Long.valueOf(aa.get(i + 2)));
+                                                replOffsetMap.put(clientSocket, Long.valueOf(aa.get(i + 2)));
                                             }
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
@@ -1041,20 +1050,37 @@ public class Main {
                                                         String task = clientMap.get(clientSocket).take();
                                                         printWriter.write(task);
                                                         printWriter.flush();
-                                                        printWriter.write("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
-                                                        printWriter.flush();
+
                                                     } catch (Exception e) {
                                                         System.out.println(e.getMessage());
                                                     }
                                                 }
                                             }).start();
-                                        }  else if (aa.get(i).equals("WAIT")) {
+                                        } else if (aa.get(i).equals("WAIT")) {
+                                            if (masterAck.get() == 0) {
+                                                printWriter.print(":" + replicaCount.get() + "\r\n");
+                                                printWriter.flush();
+                                                continue;
+                                            }
+
+                                            long start = System.nanoTime();
                                             int n = Integer.parseInt(aa.get(i + 1));
                                             int time = Integer.parseInt(aa.get(i + 2));
 
-                                            Long curr = replOffsetMap.get(Thread.currentThread().getName());
-
-                                            printWriter.print(":" + replicaCount.get() + "\r\n");
+                                            boolean fl = false;
+                                            int tmp = 0;
+                                            while (System.nanoTime() - start < time * 1_000_000) {
+                                                for (Map.Entry<Socket, Long> entry : replOffsetMap.entrySet()) {
+                                                    if (entry.getValue() >= masterAck.get()) {
+                                                        tmp++;
+                                                        if (tmp >= n) {
+                                                            fl = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            printWriter.print(":" + tmp + "\r\n");
                                             printWriter.flush();
                                         }
 
