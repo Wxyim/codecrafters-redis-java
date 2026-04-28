@@ -13,11 +13,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class Main {
-  public static void main(String[] args){
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    System.out.println("Logs from your program will appear here!");
+    public static void main(String[] args){
+        // You can use print statements as follows for debugging, they'll be visible when running tests.
+        System.out.println("Logs from your program will appear here!");
 
-    //  Uncomment the code below to pass the first stage
+        //  Uncomment the code below to pass the first stage
         ServerSocket serverSocket = null;
 
         Map<String, Object> argsMap = new HashMap<>();
@@ -37,16 +37,14 @@ public class Main {
         Map<String, Date> replMapTime = new ConcurrentHashMap<>();
 
         if (argsMap.containsKey("replicaof")) {
-          String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
-            // 副本连接处理 - 完整重写
+            String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
+            // 副本连接处理 - 使用字节级 InputStream 解析（避免 BufferedReader 预读问题）
             new Thread(() -> {
                 try {
                     Socket masterSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
                     masterSocket.setKeepAlive(true);
 
                     InputStream rawInput = masterSocket.getInputStream();
-                    BufferedReader bufferedReader = new BufferedReader(
-                            new InputStreamReader(rawInput, StandardCharsets.ISO_8859_1));
                     PrintWriter printWriter = new PrintWriter(
                             new OutputStreamWriter(masterSocket.getOutputStream(), StandardCharsets.ISO_8859_1), true);
 
@@ -58,11 +56,10 @@ public class Main {
                     printWriter.flush();
 
                     String message;
-                    while ((message = bufferedReader.readLine()) != null) {
-                        // 跳过任何意外的空行，防止把 "" 当成 "*..." 去解析
-                        if (message.isEmpty()) {
-                            continue;
-                        }
+                    while ((message = readLineFromStream(rawInput)) != null) {
+                        // 跳过空行
+                        if (message.isEmpty()) continue;
+
                         if (handshakeState < 4) {
                             if (handshakeState == 0 && message.startsWith("+PONG")) {
                                 printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
@@ -80,8 +77,14 @@ public class Main {
                                 handshakeState = 3; // 等待 RDB 长度行
                             } else if (handshakeState == 3 && message.startsWith("$")) {
                                 // RDB 长度行
-                                int rdbLength = Integer.parseInt(message.substring(1));
-                                // 【关键】：用原始 read 读取 RDB 二进制数据
+                                int rdbLength;
+                                try {
+                                    rdbLength = Integer.parseInt(message.substring(1));
+                                } catch (NumberFormatException ex) {
+                                    System.out.println("ERROR parsing RDB length: " + message);
+                                    break;
+                                }
+                                // 用原始 read 读取 RDB 二进制数据
                                 byte[] rdbData = new byte[rdbLength];
                                 int bytesRead = 0;
                                 while (bytesRead < rdbLength) {
@@ -89,41 +92,48 @@ public class Main {
                                     if (n == -1) break;
                                     bytesRead += n;
                                 }
-                                // 精确消费掉二进制数据后的 CRLF（bulk string 的尾部），不要使用 bufferedReader.readLine()
-                                // 因为 bufferedReader 可能会做预读取，导致把后面的 RESP 数据也读走，破坏协议对齐。
+                                // 精确消费掉二进制数据后的 CRLF（bulk string 的尾部）
                                 int cr = rawInput.read();
                                 int lf = rawInput.read();
-                                // 可选：检查 cr==13 && lf==10，否则记录 debug 或处理异常情形
+                                // 可选：简单校验
+                                if (!(cr == '\r' && lf == '\n')) {
+                                    // 如果不匹配，打印 debug（但继续）
+                                    System.out.println("DEBUG: expected CRLF after RDB data but got: " + cr + "," + lf);
+                                }
                                 handshakeState = 4;
                                 replicaOffset = 0;
                             }
                             continue;
                         }
 
-                        // 进入 handshakeState == 4，处理命令
+                        // 进入 handshakeState == 4，处理命令（统一用 InputStream 读取）
                         byte[] lineBytes = message.getBytes(StandardCharsets.ISO_8859_1);
                         replicaOffset += lineBytes.length + 2;
 
                         if (message.startsWith("*")) {
-                            int length = Integer.parseInt(message.substring(1));
+                            int length;
+                            try {
+                                length = Integer.parseInt(message.substring(1));
+                            } catch (NumberFormatException ex) {
+                                // 非法的数组头，跳过
+                                System.out.println("ERROR: invalid array header: " + message);
+                                continue;
+                            }
                             System.out.println("DEBUG: Received command array length: " + length + ", message: " + message);
                             if (length > 0) {
                                 List<String> aa = new ArrayList<>();
-                                long commandStartOffset = replicaOffset;  // 【关键】：记录命令开始位置
+                                long commandStartOffset = replicaOffset;  // 记录命令开始位置
 
                                 for (int i = 0; i < length; i++) {
-                                    String lenLine = bufferedReader.readLine();
-
-                                    // 跳过空行，直到拿到以 '$' 开头的长度行或遇到 EOF
+                                    String lenLine = readLineFromStream(rawInput);
+                                    // 跳过空行
                                     while (lenLine != null && lenLine.isEmpty()) {
-                                        lenLine = bufferedReader.readLine();
+                                        lenLine = readLineFromStream(rawInput);
                                     }
-
                                     if (lenLine == null) {
                                         System.out.println("ERROR: Unexpected null lenLine at index " + i);
                                         break;
                                     }
-
                                     if (!lenLine.startsWith("$")) {
                                         System.out.println("ERROR: Expected $, got: " + lenLine);
                                         break;
@@ -131,23 +141,44 @@ public class Main {
 
                                     replicaOffset += lenLine.getBytes(StandardCharsets.ISO_8859_1).length + 2;
 
-                                    int l = Integer.parseInt(lenLine.substring(1));
+                                    int l;
+                                    try {
+                                        l = Integer.parseInt(lenLine.substring(1));
+                                    } catch (NumberFormatException ex) {
+                                        System.out.println("ERROR parsing bulk length: " + lenLine);
+                                        break;
+                                    }
                                     if (l == -1) {
                                         aa.add(null);
                                         continue;
                                     }
-                                    String m = bufferedReader.readLine();
-                                    if (m != null) {
-                                        replicaOffset += m.getBytes(StandardCharsets.ISO_8859_1).length + 2;
-                                        aa.add(m);
+                                    // 读取长度为 l 的 bulk 字符串（原始字节）
+                                    byte[] data = new byte[l];
+                                    int read = 0;
+                                    while (read < l) {
+                                        int n = rawInput.read(data, read, l - read);
+                                        if (n == -1) break;
+                                        read += n;
                                     }
+                                    // 读完 bulk 数据后再消费 CRLF
+                                    int r = rawInput.read();
+                                    int s = rawInput.read();
+                                    if (!(r == '\r' && s == '\n')) {
+                                        // debug 提示，但继续
+                                        System.out.println("DEBUG: expected CRLF after bulk data but got: " + r + "," + s);
+                                    }
+                                    replicaOffset += l + 2; // data bytes + CRLF
+                                    String m = new String(data, StandardCharsets.ISO_8859_1);
+                                    aa.add(m);
                                 }
 
                                 System.out.println("DEBUG: Parsed command: " + aa + ", offset: " + replicaOffset);
 
                                 for (int i = 0; i < aa.size(); i++) {
+                                    if (aa.get(i) == null) continue;
                                     if ("SET".equalsIgnoreCase(aa.get(i))) {
                                         if (i + 3 < aa.size()
+                                                && aa.get(i + 3) != null
                                                 && (aa.get(i + 3).equalsIgnoreCase("px")
                                                 || aa.get(i + 3).equalsIgnoreCase("ex"))) {
                                             Date date = aa.get(i + 3).equalsIgnoreCase("px")
@@ -164,6 +195,8 @@ public class Main {
                                         printWriter.flush();
                                     } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
                                         if (i + 2 < aa.size()
+                                                && aa.get(i + 1) != null
+                                                && aa.get(i + 2) != null
                                                 && "getack".equalsIgnoreCase(aa.get(i + 1))
                                                 && "*".equalsIgnoreCase(aa.get(i + 2))) {
                                             System.out.println("DEBUG: Replica received GETACK, sending ACK with offset: " + replicaOffset);
@@ -184,33 +217,33 @@ public class Main {
         }
 
         try {
-          serverSocket = new ServerSocket(port);
-          // Since the tester restarts your program quite often, setting SO_REUSEADDR
-          // ensures that we don't run into 'Address already in use' errors
-          serverSocket.setReuseAddress(true);
-          // Wait for connection from client.
+            serverSocket = new ServerSocket(port);
+            // Since the tester restarts your program quite often, setting SO_REUSEADDR
+            // ensures that we don't run into 'Address already in use' errors
+            serverSocket.setReuseAddress(true);
+            // Wait for connection from client.
 
-          Map<String, String> map = new ConcurrentHashMap<>();
+            Map<String, String> map = new ConcurrentHashMap<>();
 
-          Map<String, Date> mapTime = new ConcurrentHashMap<>();
+            Map<String, Date> mapTime = new ConcurrentHashMap<>();
 
-          Map<String, CopyOnWriteArrayList<String>> mapList = new ConcurrentHashMap<>();
+            Map<String, CopyOnWriteArrayList<String>> mapList = new ConcurrentHashMap<>();
 
-          Lock lock = new ReentrantLock(true);
+            Lock lock = new ReentrantLock(true);
 
-          Lock streamlock = new ReentrantLock(true);
+            Lock streamlock = new ReentrantLock(true);
 
-          Map<String, Condition> condList = new ConcurrentHashMap<>();
+            Map<String, Condition> condList = new ConcurrentHashMap<>();
 
-          Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
+            Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
 
-          Map<String, String> streamDolorMap = new ConcurrentHashMap<>();
+            Map<String, String> streamDolorMap = new ConcurrentHashMap<>();
 
-          Map<String, Queue<String>> multiMap = new ConcurrentHashMap<>();
+            Map<String, Queue<String>> multiMap = new ConcurrentHashMap<>();
 
-          Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
+            Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
-          Map<Socket, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
+            Map<Socket, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
 
             AtomicInteger replicaCount = new AtomicInteger(0);
 
@@ -310,7 +343,7 @@ public class Main {
                                                 String s = "*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n";
                                                 // 【关键】确保字符串格式完全正确
-                                                System.out.println("DEBUG: Sending SET command: " + s.replace("\r\n", "\\r\n"));
+                                                System.out.println("DEBUG: Sending SET command: " + s.replace("\r\n", "\\r\\n"));
 
                                                 // 计算并记录该命令的结束 offset（以字节为单位）
                                                 byte[] commandBytes = s.getBytes(StandardCharsets.ISO_8859_1);
@@ -478,14 +511,15 @@ public class Main {
 
                                                 if (timedOut) {
                                                     printWriter.print("*-1\r\n");
+                                                    printWriter.flush();
                                                 } else {
                                                     CopyOnWriteArrayList<String> tmpList = mapList.get(key);
                                                     String s = tmpList.removeFirst();
                                                     printWriter.print("*2\r\n");
                                                     printWriter.print("$" + key.length() + "\r\n" + key + "\r\n");
                                                     printWriter.print("$" + s.length() + "\r\n" + s + "\r\n");
+                                                    printWriter.flush();
                                                 }
-                                                printWriter.flush();
                                             } catch (InterruptedException e) {
                                                 Thread.currentThread().interrupt();
                                             } finally {
@@ -1192,7 +1226,7 @@ public class Main {
 
 
         } catch (IOException e) {
-          System.out.println("serverSocket IOException: " + e.getLocalizedMessage());
+            System.out.println("serverSocket IOException: " + e.getLocalizedMessage());
         } finally {
             if (serverSocket != null) {
                 try {
@@ -1202,7 +1236,35 @@ public class Main {
                 }
             }
         }
-  }
+    }
+
+    // 辅助函数：从 InputStream 按字节读取一行（直到 CRLF），返回 ISO-8859-1 编码的字符串（不包含 CRLF）。
+    private static String readLineFromStream(InputStream in) throws IOException {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        int b;
+        while ((b = in.read()) != -1) {
+            if (b == '\r') {
+                int n = in.read();
+                if (n == -1) {
+                    // EOF after CR — treat as end
+                    break;
+                }
+                if (n == '\n') {
+                    // 到达 CRLF，结束
+                    break;
+                } else {
+                    // 不是 LF，把 CR 和读取到的字节写回 buffer 并继续
+                    buf.write('\r');
+                    buf.write(n);
+                    continue;
+                }
+            } else {
+                buf.write(b);
+            }
+        }
+        if (b == -1 && buf.size() == 0) return null;
+        return buf.toString("ISO-8859-1");
+    }
 
     public static byte[] hexStringToByteArray(String s) {
         int len = s.length();
