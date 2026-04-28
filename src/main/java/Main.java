@@ -59,6 +59,10 @@ public class Main {
 
                     String message;
                     while ((message = bufferedReader.readLine()) != null) {
+                        // 跳过任何意外的空行，防止把 "" 当成 "*..." 去解析
+                        if (message.isEmpty()) {
+                            continue;
+                        }
                         if (handshakeState < 4) {
                             if (handshakeState == 0 && message.startsWith("+PONG")) {
                                 printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
@@ -109,6 +113,12 @@ public class Main {
 
                                 for (int i = 0; i < length; i++) {
                                     String lenLine = bufferedReader.readLine();
+
+                                    // 跳过空行，直到拿到以 '$' 开头的长度行或遇到 EOF
+                                    while (lenLine != null && lenLine.isEmpty()) {
+                                        lenLine = bufferedReader.readLine();
+                                    }
+
                                     if (lenLine == null) {
                                         System.out.println("ERROR: Unexpected null lenLine at index " + i);
                                         break;
