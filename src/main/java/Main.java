@@ -32,9 +32,116 @@ public class Main {
 
         int port = argsMap.containsKey("port") ? (int) argsMap.get("port") : 6379;
 
-        List<Socket> clients = new ArrayList<>();
+        Map<String, String> replMap = new ConcurrentHashMap<>();
+        Map<String, Date> replMapTime = new ConcurrentHashMap<>();
 
-        Socket mainSocket = null;
+        if (argsMap.containsKey("replicaof")) {
+          String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
+          new Thread(() -> {
+              try {
+                  Socket masterSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
+                  // 使用 ISO_8859_1 确保二进制数据能按字节正确读取
+                  try (masterSocket;
+                       BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream(), StandardCharsets.ISO_8859_1));
+                       PrintWriter printWriter = new PrintWriter(masterSocket.getOutputStream(), true)) {
+                      masterSocket.setKeepAlive(true);
+                      long offset = 0;
+                      long commandStartOffset = 0;
+
+                      // 1. 发送 PING
+                      printWriter.print("*1\r\n$4\r\nPING\r\n");
+                      printWriter.flush();
+
+                      int handshakeState = 0; // 0: PING sent, 1: PORT sent, 2: CAPA sent, 3: PSYNC sent, 4: Commands
+                      String message;
+
+                      while ((message = bufferedReader.readLine()) != null) {
+                          if (handshakeState == 4) {
+                              commandStartOffset = offset;
+                              offset = offset + message.length() + 2;
+                          }
+                          if (handshakeState == 0 && message.startsWith("+PONG")) {
+                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
+                              printWriter.flush();
+                              handshakeState = 1;
+                          } else if (handshakeState == 1 && message.startsWith("+OK")) {
+                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
+                              printWriter.flush();
+                              handshakeState = 2;
+                          } else if (handshakeState == 2 && message.startsWith("+OK")) {
+                              printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
+                              printWriter.flush();
+                              handshakeState = 3;
+                          } else if (message.startsWith("+FULLRESYNC")) {
+                              // 读取紧随其后的 RDB 文件长度行
+                              String rdbHeader = bufferedReader.readLine();
+                              if (rdbHeader != null && rdbHeader.startsWith("$")) {
+                                  int rdbLength = Integer.parseInt(rdbHeader.substring(1));
+                                  // 跳过 RDB 内容
+                                  for (int i = 0; i < rdbLength; i++) {
+                                      if (bufferedReader.read() == -1) break;
+                                  }
+                              }
+                              handshakeState = 4;
+                              offset = 0;
+                          } else if (message.startsWith("*")) {
+                              // 处理主节点传播的命令
+                              int length = Integer.parseInt(message.substring(1));
+                              if (length > 0) {
+                                  List<String> aa = new ArrayList<>();
+                                  for (int i = 0; i < length; i++) {
+                                      String lenLine = bufferedReader.readLine();
+                                      if (lenLine == null) break;
+                                      if (handshakeState == 4) {
+                                          offset += lenLine.length() + 2;
+                                      }
+                                      int l = Integer.parseInt(lenLine.substring(1));
+                                      if (l == -1) {
+                                          aa.add(null);
+                                          continue;
+                                      }
+                                      String m = bufferedReader.readLine();
+                                      if (handshakeState == 4) {
+                                          offset += m.length() + 2;
+                                      }
+                                      aa.add(m);
+                                  }
+
+                                  for (int i = 0; i < aa.size(); i++) {
+                                      if ("SET".equalsIgnoreCase(aa.get(i))) {
+                                          boolean f = false;
+                                          if (i + 3 < aa.size()
+                                                  && (aa.get(i + 3).equalsIgnoreCase("px")
+                                                  || aa.get(i + 3).equalsIgnoreCase("ex"))) {
+                                              Date date = aa.get(i + 3).equalsIgnoreCase("px")
+                                                      ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
+                                                      : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
+                                              replMapTime.put(aa.get(i + 1), date);
+                                              f = true;
+                                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" + String.valueOf(commandStartOffset).length() + "\r\n" + commandStartOffset + "\r\n");
+                                              printWriter.flush();
+                                          }
+                                          replMap.put(aa.get(i + 1), aa.get(i + 2));
+                                          if (!f) {
+                                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" + String.valueOf(commandStartOffset).length() + "\r\n" + commandStartOffset + "\r\n");
+                                              printWriter.flush();
+                                          }
+                                      } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
+                                          if (i + 2 < aa.size() && "getack".equalsIgnoreCase(aa.get(i + 1)) && "*".equalsIgnoreCase(aa.get(i + 2))) {
+                                              printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" + String.valueOf(commandStartOffset).length() + "\r\n" + commandStartOffset + "\r\n");
+                                              printWriter.flush();
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              } catch (IOException e) {
+                  System.out.println("IOException in replica handshake: " + e.getMessage());
+              }
+          }).start();
+        }
 
         try {
           serverSocket = new ServerSocket(port);
@@ -43,125 +150,15 @@ public class Main {
           serverSocket.setReuseAddress(true);
           // Wait for connection from client.
 
-            Map<String, String> replMap = new ConcurrentHashMap<>();
-
-            Map<String, Date> replMapTime = new ConcurrentHashMap<>();
-
-
-          if (argsMap.containsKey("replicaof")) {
-              String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
-              new Thread(() -> {
-                  try {
-                      Socket masterSocket = new Socket(mainHost[0], Integer.parseInt(mainHost[1]));
-                      // 使用 ISO_8859_1 确保二进制数据能按字节正确读取
-                      try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(masterSocket.getInputStream(), StandardCharsets.ISO_8859_1));
-                           PrintWriter printWriter = new PrintWriter(masterSocket.getOutputStream(), true)) {
-                          long offset = 0;
-                          long commandStartOffset = 0;
-
-                          // 1. 发送 PING
-                          printWriter.print("*1\r\n$4\r\nPING\r\n");
-                          printWriter.flush();
-                          
-                          int handshakeState = 0; // 0: PING sent, 1: PORT sent, 2: CAPA sent, 3: PSYNC sent, 4: Commands
-                          String message;
-                          
-                          while ((message = bufferedReader.readLine()) != null) {
-                              if (handshakeState == 4) {
-                                  commandStartOffset = offset;
-                                  offset = offset + message.length() + 2;
-                              }
-                              if (handshakeState == 0 && message.startsWith("+PONG")) {
-                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + port + "\r\n");
-                                  printWriter.flush();
-                                  handshakeState = 1;
-                              } else if (handshakeState == 1 && message.startsWith("+OK")) {
-                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
-                                  printWriter.flush();
-                                  handshakeState = 2;
-                              } else if (handshakeState == 2 && message.startsWith("+OK")) {
-                                  printWriter.print("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n");
-                                  printWriter.flush();
-                                  handshakeState = 3;
-                              } else if (message.startsWith("+FULLRESYNC")) {
-                                  // 读取紧随其后的 RDB 文件长度行
-                                  String rdbHeader = bufferedReader.readLine();
-                                  if (rdbHeader != null && rdbHeader.startsWith("$")) {
-                                      int rdbLength = Integer.parseInt(rdbHeader.substring(1));
-                                      // 跳过 RDB 内容
-                                      for (int i = 0; i < rdbLength; i++) {
-                                          if (bufferedReader.read() == -1) break;
-                                      }
-                                  }
-                                  handshakeState = 4;
-                                  offset = 0;
-                              } else if (message.startsWith("*")) {
-                                  // 处理主节点传播的命令
-                                  int length = Integer.parseInt(message.substring(1));
-                                  if (length > 0) {
-                                      List<String> aa = new ArrayList<>();
-                                      for (int i = 0; i < length; i++) {
-                                          String lenLine = bufferedReader.readLine();
-                                          if (lenLine == null) break;
-                                          if (handshakeState == 4) {
-                                              offset += lenLine.length() + 2;
-                                          }
-                                          int l = Integer.parseInt(lenLine.substring(1));
-                                          if (l == -1) {
-                                              aa.add(null);
-                                              continue;
-                                          }
-                                          String m = bufferedReader.readLine();
-                                          if (handshakeState == 4) {
-                                              offset += m.length() + 2;
-                                          }
-                                          aa.add(m);
-                                      }
-
-                                      for (int i = 0; i < aa.size(); i++) {
-                                          if ("SET".equalsIgnoreCase(aa.get(i))) {
-                                              if (i + 3 < aa.size()
-                                                      && (aa.get(i + 3).equalsIgnoreCase("px")
-                                                      || aa.get(i + 3).equalsIgnoreCase("ex"))) {
-                                                  Date date = aa.get(i + 3).equalsIgnoreCase("px")
-                                                          ? new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)))
-                                                          : new Date(System.currentTimeMillis() + Long.parseLong(aa.get(i + 4)) * 1000);
-                                                  replMapTime.put(aa.get(i + 1), date);
-                                              }
-                                              replMap.put(aa.get(i + 1), aa.get(i + 2));
-                                          } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
-                                              if (i + 2 < aa.size() && "getack".equalsIgnoreCase(aa.get(i + 1)) && "*".equalsIgnoreCase(aa.get(i + 2))) {
-                                                  long val = commandStartOffset;
-                                                  printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
-                                                  printWriter.flush();
-                                              }
-                                          }
-                                      }
-                                  }
-                              }
-                          }
-                      } finally {
-                          masterSocket.close();
-                      }
-                  } catch (IOException e) {
-                      System.out.println("IOException in replica handshake: " + e.getMessage());
-                  }
-              }).start();
-          }
-
           Map<String, String> map = new ConcurrentHashMap<>();
 
           Map<String, Date> mapTime = new ConcurrentHashMap<>();
-
-          List<String> list = Collections.synchronizedList(new ArrayList<>());
 
           Map<String, CopyOnWriteArrayList<String>> mapList = new ConcurrentHashMap<>();
 
           Lock lock = new ReentrantLock(true);
 
           Lock streamlock = new ReentrantLock(true);
-
-          Lock tasklock = new ReentrantLock(true);
 
           Map<String, Condition> condList = new ConcurrentHashMap<>();
 
@@ -173,24 +170,23 @@ public class Main {
 
           Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
 
-          Map<String, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
-          BlockingQueue<String> taskQueue = new LinkedBlockingQueue<>();
-
-            AtomicBoolean ready = new AtomicBoolean(false);
-
-            CopyOnWriteArrayList<String> taskList = new CopyOnWriteArrayList<>();
+          Map<Socket, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
 
             AtomicInteger replicaCount = new AtomicInteger(0);
 
+            Map<String, Long> replOffsetMap = new ConcurrentHashMap<>();
+
             while (true) {
                 Socket clientSocket = serverSocket.accept();
+                clientSocket.setKeepAlive(true);
+                AtomicBoolean isReplicaCli = new AtomicBoolean(false);
                 Thread client = new Thread(() -> {
                     try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                          PrintWriter printWriter = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
                         String message;
                         while ((message = bufferedReader.readLine()) != null) {
-                            if (message.startsWith("*")) {
+                            if (message != null && message.startsWith("*")) {
                                 int length = Integer.parseInt(message.substring(1));
                                 if (length > 0) {
                                     List<String> aa = new ArrayList<>();
@@ -240,7 +236,7 @@ public class Main {
                                                 }
                                                 f = true;
                                                 mapTime.put(aa.get(i + 1), date);
-                                                for (Map.Entry<String, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add("*5\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
                                                             + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
                                                             + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
@@ -256,7 +252,7 @@ public class Main {
                                             }
                                             map.put(aa.get(i + 1), aa.get(i + 2));
                                             if (!f) {
-                                                for (Map.Entry<String, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add("*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
                                                             + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n");
                                                 }
@@ -1022,9 +1018,14 @@ public class Main {
                                             printWriter.print("$" + info.length() + "\r\n" + info + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("REPLCONF")) {
+                                            if (i + 2 < aa.size() && "ack".equalsIgnoreCase(aa.get(i + 1))) {
+                                                replOffsetMap.put(Thread.currentThread().getName(), Long.valueOf(aa.get(i + 2)));
+                                            }
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
+
                                         } else if (aa.get(i).equals("PSYNC")) {
+                                            isReplicaCli.set(true);
                                             printWriter.print("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n");
                                             printWriter.flush();
                                             byte[] bytes = hexStringToByteArray("524544495330303131fe00ff0000000000000000");
@@ -1032,14 +1033,25 @@ public class Main {
                                             clientSocket.getOutputStream().write(bytes);
                                             clientSocket.getOutputStream().flush();
 
-                                            clientMap.put(Thread.currentThread().getName(), new LinkedBlockingQueue<>());
                                             replicaCount.incrementAndGet();
-                                            while (true) {
-                                                String task = clientMap.get(Thread.currentThread().getName()).take();
-                                                printWriter.write(task);
-                                                printWriter.flush();
-                                            }
+                                            clientMap.put(clientSocket, new LinkedBlockingQueue<>());
+                                            new Thread(() -> {
+                                                while (true) {
+                                                    try {
+                                                        String task = clientMap.get(clientSocket).take();
+                                                        printWriter.write(task);
+                                                        printWriter.flush();
+                                                    } catch (Exception e) {
+                                                        System.out.println(e.getMessage());
+                                                    }
+                                                }
+                                            }).start();
                                         }  else if (aa.get(i).equals("WAIT")) {
+                                            int n = Integer.parseInt(aa.get(i + 1));
+                                            int time = Integer.parseInt(aa.get(i + 2));
+
+                                            Long curr = replOffsetMap.get(Thread.currentThread().getName());
+
                                             printWriter.print(":" + replicaCount.get() + "\r\n");
                                             printWriter.flush();
                                         }
@@ -1063,9 +1075,18 @@ public class Main {
                 });
                 client.start();
             }
+
+
         } catch (IOException e) {
-          System.out.println("IOException: " + e.getMessage());
+          System.out.println("serverSocket IOException: " + e.getMessage());
         } finally {
+            if (serverSocket != null) {
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    System.out.println("serverSocket close IOException: " + e.getMessage());
+                }
+            }
         }
   }
 
