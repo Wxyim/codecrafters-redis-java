@@ -1070,7 +1070,7 @@ public class Main {
 
                                             // WAIT numReplicas timeoutMillis
                                             int required = Integer.parseInt(aa.get(i + 1)); // WAIT 参数
-                                            long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)) * 1000L);
+                                            long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)));
                                             long start = System.currentTimeMillis();
                                             int confirmed = 0;
 
