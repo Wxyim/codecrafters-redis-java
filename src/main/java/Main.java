@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -176,9 +177,11 @@ public class Main {
 
             Map<Socket, Long> replOffsetMap = new ConcurrentHashMap<>();
 
-            AtomicInteger masterAck = new AtomicInteger(0);
+            AtomicLong lastOffset = new AtomicLong(0);
 
             Map<String, Long> replAckMap = new ConcurrentHashMap<>();
+
+            AtomicLong commandEndOffset = new AtomicLong();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -245,7 +248,8 @@ public class Main {
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
                                                         + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
                                                         + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n";
-                                                masterAck.set(masterAck.get() + s.length());
+                                                // 计算并记录该命令的结束 offset（以字节为单位）
+                                                commandEndOffset.set(lastOffset.addAndGet(s.length()));
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add(s);
                                                 }
@@ -261,7 +265,8 @@ public class Main {
                                             if (!f) {
                                                 String s = "*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n";
-                                                masterAck.set(masterAck.get() + s.length());
+                                                // 计算并记录该命令的结束 offset（以字节为单位）
+                                                commandEndOffset.set(lastOffset.addAndGet(s.length()));
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add(s);
                                                 }
@@ -1028,7 +1033,7 @@ public class Main {
                                             printWriter.flush();
                                         } else if (aa.get(i).equals("REPLCONF")) {
                                             if (i + 2 < aa.size() && "ack".equalsIgnoreCase(aa.get(i + 1))) {
-                                                replOffsetMap.put(clientSocket, Long.valueOf(aa.get(i + 2)));
+                                                replAckMap.put(clientSocket.getRemoteSocketAddress().toString(), Long.valueOf(aa.get(i + 2)));
                                             }
                                             printWriter.print("+OK\r\n");
                                             printWriter.flush();
@@ -1057,38 +1062,35 @@ public class Main {
                                                 }
                                             }).start();
                                         } else if (aa.get(i).equals("WAIT")) {
-                                            if (masterAck.get() == 0) {
+                                            if (lastOffset.get() == 0) {
                                                 printWriter.print(":" + replicaCount.get() + "\r\n");
                                                 printWriter.flush();
                                                 continue;
                                             }
 
-                                            long start = System.nanoTime();
-                                            int n = Integer.parseInt(aa.get(i + 1));
-                                            int time = Integer.parseInt(aa.get(i + 2));
+                                            // WAIT numReplicas timeoutMillis
+                                            int required = Integer.parseInt(aa.get(i + 1)); // WAIT 参数
+                                            long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)) * 1000L);
+                                            long start = System.currentTimeMillis();
+                                            int confirmed = 0;
 
-                                            int tt = 0;
-                                            // 广播 REPLCONF GETACK * 给所有已连接的副本
-                                            for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                String getack = "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
-                                                entry.getValue().add(getack);
-                                                // 一行调试日志，便于在测试时确认哪个 socket 收到消息
-                                                System.out.println("Enqueued GETACK to replica socket: " + entry.getKey().getRemoteSocketAddress());
-                                            }
-
-
-                                            int tmp = 0;
-                                            while (System.nanoTime() - start < time * 1_000_000) {
-                                                for (Map.Entry<Socket, Long> entry : replOffsetMap.entrySet()) {
-                                                    if (entry.getValue() >= masterAck.get()) {
-                                                        tmp++;
-                                                        if (tmp >= n) {
-                                                            break;
-                                                        }
+                                            while (System.currentTimeMillis() - start < timeoutMs) {
+                                                confirmed = 0;
+                                                for (Map.Entry<String, Long> e : replAckMap.entrySet()) {
+                                                    if (e.getValue() >= commandEndOffset.get()) {
+                                                        confirmed++;
                                                     }
                                                 }
+                                                if (confirmed >= required) break;
+                                                try {
+                                                    Thread.sleep(5); // 短暂等待，避免忙等
+                                                } catch (InterruptedException ex) {
+                                                    Thread.currentThread().interrupt();
+                                                    break;
+                                                }
                                             }
-                                            printWriter.print(":" + tmp + "\r\n");
+                                            // 返回 confirmed（实际已确认的副本数）
+                                            printWriter.print(":" + confirmed + "\r\n");
                                             printWriter.flush();
                                         }
 
