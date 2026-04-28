@@ -468,8 +468,13 @@ public class Main {
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
                                                         + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
                                                         + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n";
+                                                // 【关键】确保字符串格式完全正确
+                                                System.out.println("DEBUG: Sending SET command 4: " + s.replace("\r\n", "\\r\\n"));
+
                                                 // 计算并记录该命令的结束 offset（以字节为单位）
-                                                commandEndOffset.set(lastOffset.addAndGet(s.length()));
+                                                byte[] commandBytes = s.getBytes(StandardCharsets.ISO_8859_1);
+                                                commandEndOffset.set(lastOffset.addAndGet(commandBytes.length));
+
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add(s);
                                                 }
@@ -485,8 +490,13 @@ public class Main {
                                             if (!f) {
                                                 String s = "*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n";
+                                                // 【关键】确保字符串格式完全正确
+                                                System.out.println("DEBUG: Sending SET command: " + s.replace("\r\n", "\\r\\n"));
+
                                                 // 计算并记录该命令的结束 offset（以字节为单位）
-                                                commandEndOffset.set(lastOffset.addAndGet(s.length()));
+                                                byte[] commandBytes = s.getBytes(StandardCharsets.ISO_8859_1);
+                                                commandEndOffset.set(lastOffset.addAndGet(commandBytes.length));
+
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add(s);
                                                 }
