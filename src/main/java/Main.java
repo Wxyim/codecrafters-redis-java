@@ -1107,16 +1107,21 @@ public class Main {
 
                                             int required = Integer.parseInt(aa.get(i + 1));
                                             long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)));
+                                            int replicaNum = clientMap.size();
 
                                             // 向所有副本发送 REPLCONF GETACK *
                                             String getackCommand = "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
-                                            for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                entry.getValue().add(getackCommand);
+                                            // 【关键】：同步发送，确保所有副本都收到
+                                            synchronized (clientMap) {
+                                                for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                    entry.getValue().add(getackCommand);
+                                                }
                                             }
 
                                             // 等待副本回复
                                             long start = System.currentTimeMillis();
                                             int confirmed = 0;
+                                            int expectedReplies = replicaNum;
 
                                             while (System.currentTimeMillis() - start < timeoutMs) {
                                                 confirmed = 0;
@@ -1127,6 +1132,9 @@ public class Main {
                                                 }
                                                 if (confirmed >= required) break;
 
+                                                // 【关键】：如果已收到所有副本的回复但不足 required，也可以返回
+                                                if (replAckMap.size() >= expectedReplies) break;
+
                                                 try {
                                                     Thread.sleep(10);
                                                 } catch (InterruptedException ex) {
@@ -1135,6 +1143,8 @@ public class Main {
                                                 }
                                             }
 
+                                            System.out.println("DEBUG: WAIT result - required: " + required + ", confirmed: " + confirmed +
+                                                    ", replAckMap size: " + replAckMap.size());
                                             printWriter.print(":" + confirmed + "\r\n");
                                             printWriter.flush();
                                         }
