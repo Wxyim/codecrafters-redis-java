@@ -301,8 +301,17 @@ public class Main {
 
                                 for (int i = 0; i < length; i++) {
                                     String lenLine = bufferedReader.readLine();
-                                    if (lenLine == null) break;
+                                    if (lenLine == null) {
+                                        System.out.println("ERROR: Unexpected null lenLine at index " + i);
+                                        break;
+                                    }
                                     replicaOffset += lenLine.getBytes(StandardCharsets.ISO_8859_1).length + 2;
+
+                                    // 【安全检查】
+                                    if (!lenLine.startsWith("$")) {
+                                        System.out.println("ERROR: Expected $, got: " + lenLine);
+                                        break;
+                                    }
 
                                     int l = Integer.parseInt(lenLine.substring(1));
                                     if (l == -1) {
@@ -344,6 +353,9 @@ public class Main {
                                     }
                                 }
                             }
+                        } else {
+                            // 【诊断】：如果收到非数组，打印是什么
+                            System.out.println("DEBUG: Received non-array message in command state: " + message);
                         }
                     }
                 } catch (IOException e) {
