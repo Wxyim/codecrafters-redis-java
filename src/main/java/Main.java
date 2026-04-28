@@ -1067,7 +1067,7 @@ public class Main {
                             }
                         }
                     } catch (Exception e) {
-                        System.out.println("Exception: " + e.getMessage());
+                        System.out.println("Exception: " + e.getLocalizedMessage());
                     } finally {
                     }
 
@@ -1078,13 +1078,13 @@ public class Main {
 
 
         } catch (IOException e) {
-          System.out.println("serverSocket IOException: " + e.getMessage());
+          System.out.println("serverSocket IOException: " + e.getLocalizedMessage());
         } finally {
             if (serverSocket != null) {
                 try {
                     serverSocket.close();
                 } catch (IOException e) {
-                    System.out.println("serverSocket close IOException: " + e.getMessage());
+                    System.out.println("serverSocket close IOException: " + e.getLocalizedMessage());
                 }
             }
         }
