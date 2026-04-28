@@ -1060,9 +1060,6 @@ public class Main {
                                             if (masterAck.get() == 0) {
                                                 printWriter.print(":" + replicaCount.get() + "\r\n");
                                                 printWriter.flush();
-                                                for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                    entry.getValue().add("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
-                                                }
                                                 continue;
                                             }
 
@@ -1070,14 +1067,16 @@ public class Main {
                                             int n = Integer.parseInt(aa.get(i + 1));
                                             int time = Integer.parseInt(aa.get(i + 2));
 
-                                            boolean fl = false;
+                                            for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                entry.getValue().add("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
+                                            }
+
                                             int tmp = 0;
                                             while (System.nanoTime() - start < time * 1_000_000) {
                                                 for (Map.Entry<Socket, Long> entry : replOffsetMap.entrySet()) {
                                                     if (entry.getValue() >= masterAck.get()) {
                                                         tmp++;
                                                         if (tmp >= n) {
-                                                            fl = true;
                                                             break;
                                                         }
                                                     }
