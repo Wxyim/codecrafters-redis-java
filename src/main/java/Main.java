@@ -1068,14 +1068,14 @@ public class Main {
                                             int time = Integer.parseInt(aa.get(i + 2));
 
                                             int tt = 0;
+                                            // 广播 REPLCONF GETACK * 给所有已连接的副本
                                             for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                if (tt < 1) {
-                                                    entry.getValue().add("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
-                                                    tt++;
-                                                } else {
-                                                    break;
-                                                }
+                                                String getack = "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
+                                                entry.getValue().add(getack);
+                                                // 一行调试日志，便于在测试时确认哪个 socket 收到消息
+                                                System.out.println("Enqueued GETACK to replica socket: " + entry.getKey().getRemoteSocketAddress());
                                             }
+
 
                                             int tmp = 0;
                                             while (System.nanoTime() - start < time * 1_000_000) {
