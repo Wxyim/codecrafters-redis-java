@@ -1068,6 +1068,9 @@ public class Main {
                                                 continue;
                                             }
 
+                                            // **清空旧的 ACK 记录**
+                                            replAckMap.clear();
+
                                             int required = Integer.parseInt(aa.get(i + 1));
                                             long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)));
 
@@ -1091,7 +1094,7 @@ public class Main {
                                                 if (confirmed >= required) break;
 
                                                 try {
-                                                    Thread.sleep(5);
+                                                    Thread.sleep(10);
                                                 } catch (InterruptedException ex) {
                                                     Thread.currentThread().interrupt();
                                                     break;
