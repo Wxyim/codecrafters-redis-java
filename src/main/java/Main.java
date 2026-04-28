@@ -1041,6 +1041,8 @@ public class Main {
                                                         String task = clientMap.get(clientSocket).take();
                                                         printWriter.write(task);
                                                         printWriter.flush();
+                                                        printWriter.write("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
+                                                        printWriter.flush();
                                                     } catch (Exception e) {
                                                         System.out.println(e.getMessage());
                                                     }
