@@ -1068,9 +1068,16 @@ public class Main {
                                                 continue;
                                             }
 
-                                            // WAIT numReplicas timeoutMillis
-                                            int required = Integer.parseInt(aa.get(i + 1)); // WAIT 参数
+                                            int required = Integer.parseInt(aa.get(i + 1));
                                             long timeoutMs = (long) (Double.parseDouble(aa.get(i + 2)));
+
+                                            // 向所有副本发送 REPLCONF GETACK *
+                                            String getackCommand = "*3\r\n$8\r\nREPLCONF\r\n$5\r\nGETACK\r\n$1\r\n*\r\n";
+                                            for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                entry.getValue().add(getackCommand);
+                                            }
+
+                                            // 等待副本回复
                                             long start = System.currentTimeMillis();
                                             int confirmed = 0;
 
@@ -1082,14 +1089,15 @@ public class Main {
                                                     }
                                                 }
                                                 if (confirmed >= required) break;
+
                                                 try {
-                                                    Thread.sleep(5); // 短暂等待，避免忙等
+                                                    Thread.sleep(5);
                                                 } catch (InterruptedException ex) {
                                                     Thread.currentThread().interrupt();
                                                     break;
                                                 }
                                             }
-                                            // 返回 confirmed（实际已确认的副本数）
+
                                             printWriter.print(":" + confirmed + "\r\n");
                                             printWriter.flush();
                                         }
