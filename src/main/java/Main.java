@@ -1067,8 +1067,14 @@ public class Main {
                                             int n = Integer.parseInt(aa.get(i + 1));
                                             int time = Integer.parseInt(aa.get(i + 2));
 
+                                            int tt = 0;
                                             for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
-                                                entry.getValue().add("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
+                                                if (tt < 1) {
+                                                    entry.getValue().add("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
+                                                    tt++;
+                                                } else {
+                                                    break;
+                                                }
                                             }
 
                                             int tmp = 0;
