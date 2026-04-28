@@ -85,11 +85,13 @@ public class Main {
                                     if (n == -1) break;
                                     bytesRead += n;
                                 }
+                                // 精确消费掉二进制数据后的 CRLF（bulk string 的尾部），不要使用 bufferedReader.readLine()
+                                // 因为 bufferedReader 可能会做预读取，导致把后面的 RESP 数据也读走，破坏协议对齐。
+                                int cr = rawInput.read();
+                                int lf = rawInput.read();
+                                // 可选：检查 cr==13 && lf==10，否则记录 debug 或处理异常情形
                                 handshakeState = 4;
                                 replicaOffset = 0;
-                                // 消费掉二进制数据后的 CRLF（bulk string 的尾部）
-                                // bufferedReader 是基于同一流的 reader，调用 readLine() 会读走那个空行
-                                bufferedReader.readLine();
                             }
                             continue;
                         }
