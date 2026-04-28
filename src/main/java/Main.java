@@ -1068,6 +1068,7 @@ public class Main {
                                         } else if (aa.get(i).equals("REPLCONF")) {
                                             if (i + 2 < aa.size() && "ack".equalsIgnoreCase(aa.get(i + 1))) {
                                                 replAckMap.put(clientSocket.getRemoteSocketAddress().toString(), Long.valueOf(aa.get(i + 2)));
+                                                continue;
                                             }
                                             if (isReplicaCli.get() && clientMap.containsKey(clientSocket)) {
                                                 clientMap.get(clientSocket).add("+OK\r\n"); // 交给专用写线
@@ -1086,20 +1087,13 @@ public class Main {
 
                                             replicaCount.incrementAndGet();
                                             clientMap.put(clientSocket, new LinkedBlockingQueue<>());
-                                            OutputStream os;
-                                            try {
-                                                os = clientSocket.getOutputStream();
-                                            } catch (IOException e) {
-                                                // error
-                                                return;
-                                            }
+
                                             new Thread(() -> {
                                                 while (true) {
                                                     try {
                                                         String task = clientMap.get(clientSocket).take();
-                                                        byte[] b = task.getBytes(StandardCharsets.ISO_8859_1); // 真正的原始字节
-                                                        os.write(b);
-                                                        os.flush();
+                                                        printWriter.write(task);
+                                                        printWriter.flush();
 
                                                     } catch (Exception e) {
                                                         System.out.println(e.getMessage());
