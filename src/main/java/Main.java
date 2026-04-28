@@ -184,6 +184,7 @@ public class Main {
 
                                 System.out.println("DEBUG: Parsed command: " + aa + ", offset: " + replicaOffset);
 
+                                // process tokens in aa
                                 for (int i = 0; i < aa.size(); i++) {
                                     if (aa.get(i) == null) continue;
                                     if ("SET".equalsIgnoreCase(aa.get(i))) {
@@ -222,7 +223,12 @@ public class Main {
                                             printWriter.flush();
                                         }
                                     }
+                                    // other commands handled in original server code path (master side)
                                 }
+
+                                // After fully processing this RESP array, mark appliedOffset to include it.
+                                // This ensures commands like PING (non-SET) are considered applied.
+                                appliedOffset.set(replicaOffset);
                             }
                         }
                     }
@@ -1215,8 +1221,6 @@ public class Main {
                                             printWriter.print(":" + confirmed + "\r\n");
                                             printWriter.flush();
                                         }
-
-
                                     }
                                 } else {
                                     printWriter.flush();
