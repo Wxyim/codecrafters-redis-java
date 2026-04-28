@@ -1060,10 +1060,12 @@ public class Main {
                                             if (masterAck.get() == 0) {
                                                 printWriter.print(":" + replicaCount.get() + "\r\n");
                                                 printWriter.flush();
+                                                for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
+                                                    entry.getValue().add("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
+                                                }
                                                 continue;
                                             }
-                                            printWriter.write("*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
-                                            printWriter.flush();
+
                                             long start = System.nanoTime();
                                             int n = Integer.parseInt(aa.get(i + 1));
                                             int time = Integer.parseInt(aa.get(i + 2));
