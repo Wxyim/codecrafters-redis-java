@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args){
-        // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
 
         ServerSocket serverSocket = null;
@@ -58,7 +57,6 @@ public class Main {
 
                     String message;
                     while ((message = readLineFromStream(pin)) != null) {
-                        // skip empty lines
                         if (message.isEmpty()) continue;
 
                         if (handshakeState < 4) {
@@ -75,7 +73,7 @@ public class Main {
                                 printWriter.flush();
                                 handshakeState = 3;
                             } else if (message.startsWith("+FULLRESYNC")) {
-                                handshakeState = 3; // wait for RDB length line
+                                handshakeState = 3;
                             } else if (handshakeState == 3 && message.startsWith("$")) {
                                 // RDB length line
                                 int rdbLength;
@@ -112,7 +110,7 @@ public class Main {
                             continue;
                         }
 
-                        // handshakeState == 4: command processing
+                        // handshakeState == 4
                         byte[] lineBytes = message.getBytes(StandardCharsets.ISO_8859_1);
                         replicaOffset += lineBytes.length + 2;
 
@@ -127,8 +125,6 @@ public class Main {
                             System.out.println("DEBUG: Received command array length: " + length + ", message: " + message);
                             if (length > 0) {
                                 List<String> aa = new ArrayList<>();
-                                long commandStartOffset = replicaOffset;
-
                                 for (int i = 0; i < length; i++) {
                                     String lenLine = readLineFromStream(pin);
                                     while (lenLine != null && lenLine.isEmpty()) {
@@ -184,7 +180,7 @@ public class Main {
 
                                 System.out.println("DEBUG: Parsed command: " + aa + ", offset: " + replicaOffset);
 
-                                // process tokens in aa
+                                // process tokens
                                 for (int i = 0; i < aa.size(); i++) {
                                     if (aa.get(i) == null) continue;
                                     if ("SET".equalsIgnoreCase(aa.get(i))) {
@@ -199,22 +195,15 @@ public class Main {
                                         }
                                         replMap.put(aa.get(i + 1), aa.get(i + 2));
 
-                                        // update applied offset AFTER applying this command
+                                        // update appliedOffset AFTER applying this command, but do NOT send ACK here
                                         appliedOffset.set(replicaOffset);
-
-                                        long ackOff = appliedOffset.get();
-                                        System.out.println("DEBUG: Replica sending ACK with offset: " + ackOff);
-                                        printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$"
-                                                + String.valueOf(ackOff).length() + "\r\n"
-                                                + ackOff + "\r\n");
-                                        printWriter.flush();
+                                        System.out.println("DEBUG: Applied SET, updated appliedOffset to: " + appliedOffset.get());
                                     } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
                                         if (i + 2 < aa.size()
                                                 && aa.get(i + 1) != null
                                                 && aa.get(i + 2) != null
                                                 && "getack".equalsIgnoreCase(aa.get(i + 1))
                                                 && "*".equalsIgnoreCase(aa.get(i + 2))) {
-                                            // respond with last applied offset (not current parsing offset)
                                             long ackOff = appliedOffset.get();
                                             System.out.println("DEBUG: Replica received GETACK, sending ACK with offset: " + ackOff);
                                             printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$"
@@ -223,11 +212,10 @@ public class Main {
                                             printWriter.flush();
                                         }
                                     }
-                                    // other commands handled in original server code path (master side)
                                 }
 
-                                // After fully processing this RESP array, mark appliedOffset to include it.
-                                // This ensures commands like PING (non-SET) are considered applied.
+                                // mark appliedOffset to include the whole RESP array (already done per command),
+                                // keep this to ensure non-SET arrays (PING etc.) advance appliedOffset
                                 appliedOffset.set(replicaOffset);
                             }
                         }
@@ -243,38 +231,23 @@ public class Main {
             // Since the tester restarts your program quite often, setting SO_REUSEADDR
             // ensures that we don't run into 'Address already in use' errors
             serverSocket.setReuseAddress(true);
-            // Wait for connection from client.
 
             Map<String, String> map = new ConcurrentHashMap<>();
-
             Map<String, Date> mapTime = new ConcurrentHashMap<>();
-
             Map<String, CopyOnWriteArrayList<String>> mapList = new ConcurrentHashMap<>();
-
             Lock lock = new ReentrantLock(true);
-
             Lock streamlock = new ReentrantLock(true);
-
             Map<String, Condition> condList = new ConcurrentHashMap<>();
-
             Map<String, CopyOnWriteArrayList<ConcurrentHashMap<String, Object>>> streamMap = new ConcurrentHashMap<>();
-
             Map<String, String> streamDolorMap = new ConcurrentHashMap<>();
-
             Map<String, Queue<String>> multiMap = new ConcurrentHashMap<>();
-
             Map<String, Map<String, Boolean>> watchMap = new ConcurrentHashMap<>();
-
             Map<Socket, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
 
             AtomicInteger replicaCount = new AtomicInteger(0);
-
             Map<Socket, Long> replOffsetMap = new ConcurrentHashMap<>();
-
             AtomicLong lastOffset = new AtomicLong(0);
-
             Map<String, Long> replAckMap = new ConcurrentHashMap<>();
-
             AtomicLong commandEndOffset = new AtomicLong();
 
             while (true) {
@@ -342,7 +315,6 @@ public class Main {
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2)
                                                         + "\r\n$" + aa.get(i + 3).length() + "\r\n" + aa.get(i + 3)
                                                         + "\r\n$" + aa.get(i + 4).length() + "\r\n" + aa.get(i + 4) + "\r\n";
-                                                // Debug
                                                 System.out.println("DEBUG: Sending SET command 4: " + s.replace("\r\n", "\\r\\n"));
 
                                                 byte[] commandBytes = s.getBytes(StandardCharsets.ISO_8859_1);
