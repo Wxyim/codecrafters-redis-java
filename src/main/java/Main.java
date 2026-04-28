@@ -296,6 +296,7 @@ public class Main {
 
                         if (message.startsWith("*")) {
                             int length = Integer.parseInt(message.substring(1));
+                            System.out.println("DEBUG: Received command array length: " + length + ", message: " + message);
                             if (length > 0) {
                                 List<String> aa = new ArrayList<>();
 
