@@ -295,7 +295,7 @@ public class Main {
                                                 String s = "*3\r\n$3\r\nSET\r\n$" + aa.get(i + 1).length() + "\r\n" + aa.get(i + 1)
                                                         + "\r\n$" + aa.get(i + 2).length() + "\r\n" + aa.get(i + 2) + "\r\n";
                                                 // 【关键】确保字符串格式完全正确
-                                                System.out.println("DEBUG: Sending SET command: " + s.replace("\r\n", "\\r\\n"));
+                                                System.out.println("DEBUG: Sending SET command: " + s.replace("\r\n", "\\r\n"));
 
                                                 // 计算并记录该命令的结束 offset（以字节为单位）
                                                 byte[] commandBytes = s.getBytes(StandardCharsets.ISO_8859_1);
@@ -1068,6 +1068,7 @@ public class Main {
                                         } else if (aa.get(i).equals("REPLCONF")) {
                                             if (i + 2 < aa.size() && "ack".equalsIgnoreCase(aa.get(i + 1))) {
                                                 replAckMap.put(clientSocket.getRemoteSocketAddress().toString(), Long.valueOf(aa.get(i + 2)));
+                                                // ack 类型不需要回复
                                                 continue;
                                             }
                                             if (isReplicaCli.get() && clientMap.containsKey(clientSocket)) {
@@ -1093,7 +1094,7 @@ public class Main {
                                                     try {
                                                         String task = clientMap.get(clientSocket).take();
                                                         printWriter.write(task);
-                                                        printWriter.flush();
+                                                        printWriter.flush(); // Explicitly flush here
 
                                                     } catch (Exception e) {
                                                         System.out.println(e.getMessage());
