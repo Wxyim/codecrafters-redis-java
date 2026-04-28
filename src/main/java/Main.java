@@ -1083,12 +1083,20 @@ public class Main {
 
                                             replicaCount.incrementAndGet();
                                             clientMap.put(clientSocket, new LinkedBlockingQueue<>());
+                                            OutputStream os;
+                                            try {
+                                                os = clientSocket.getOutputStream();
+                                            } catch (IOException e) {
+                                                // error
+                                                return;
+                                            }
                                             new Thread(() -> {
                                                 while (true) {
                                                     try {
                                                         String task = clientMap.get(clientSocket).take();
-                                                        printWriter.write(task);
-                                                        printWriter.flush();
+                                                        byte[] b = task.getBytes(StandardCharsets.ISO_8859_1); // 真正的原始字节
+                                                        os.write(b);
+                                                        os.flush();
 
                                                     } catch (Exception e) {
                                                         System.out.println(e.getMessage());
