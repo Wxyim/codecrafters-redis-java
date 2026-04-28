@@ -49,6 +49,7 @@ public class Main {
                             new OutputStreamWriter(masterSocket.getOutputStream(), StandardCharsets.ISO_8859_1), true);
 
                     long replicaOffset = 0;
+                    AtomicLong appliedOffset = new AtomicLong(0); // <-- track last applied offset
                     int handshakeState = 0;
 
                     // PING
@@ -197,10 +198,14 @@ public class Main {
                                         }
                                         replMap.put(aa.get(i + 1), aa.get(i + 2));
 
-                                        System.out.println("DEBUG: Replica sending ACK with offset: " + replicaOffset);
+                                        // update applied offset AFTER applying this command
+                                        appliedOffset.set(replicaOffset);
+
+                                        long ackOff = appliedOffset.get();
+                                        System.out.println("DEBUG: Replica sending ACK with offset: " + ackOff);
                                         printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$"
-                                                + String.valueOf(replicaOffset).length() + "\r\n"
-                                                + replicaOffset + "\r\n");
+                                                + String.valueOf(ackOff).length() + "\r\n"
+                                                + ackOff + "\r\n");
                                         printWriter.flush();
                                     } else if ("replconf".equalsIgnoreCase(aa.get(i))) {
                                         if (i + 2 < aa.size()
@@ -208,10 +213,12 @@ public class Main {
                                                 && aa.get(i + 2) != null
                                                 && "getack".equalsIgnoreCase(aa.get(i + 1))
                                                 && "*".equalsIgnoreCase(aa.get(i + 2))) {
-                                            System.out.println("DEBUG: Replica received GETACK, sending ACK with offset: " + replicaOffset);
+                                            // respond with last applied offset (not current parsing offset)
+                                            long ackOff = appliedOffset.get();
+                                            System.out.println("DEBUG: Replica received GETACK, sending ACK with offset: " + ackOff);
                                             printWriter.print("*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$"
-                                                    + String.valueOf(replicaOffset).length() + "\r\n"
-                                                    + replicaOffset + "\r\n");
+                                                    + String.valueOf(ackOff).length() + "\r\n"
+                                                    + ackOff + "\r\n");
                                             printWriter.flush();
                                         }
                                     }
