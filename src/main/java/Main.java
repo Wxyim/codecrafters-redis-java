@@ -1198,7 +1198,7 @@ public class Main {
                                                 Object val = argsMap.get(name);
                                                 if (val != null) {
                                                     printWriter.write("*2\r\n$" + name.length() + "\r\n" + name
-                                                            + "\r\n$" + String.valueOf(val).length() + "\r\n" + val);
+                                                            + "\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
                                                     printWriter.flush();
                                                 } else {
                                                     printWriter.write("*-1\r\n");
