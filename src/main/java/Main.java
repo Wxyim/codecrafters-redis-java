@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
@@ -251,6 +252,61 @@ public class Main {
             AtomicLong lastOffset = new AtomicLong(0);
             Map<String, Long> replAckMap = new ConcurrentHashMap<>();
             AtomicLong commandEndOffset = new AtomicLong();
+
+            // 加载 rdb
+            if (argsMap.containsKey("dir") && argsMap.containsKey("rdbfilename")) {
+                File file = new File(argsMap.get("dir") + "/" + argsMap.get("rdbfilename"));
+                if (file.isFile()) {
+                    try (InputStream is = new FileInputStream(file);
+                         ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+                        byte[] b = new byte[4096];
+                        int len;
+                        while ((len = is.read(b)) != -1) {
+                            out.write(b, 0, len);
+                        }
+
+                        byte[] data = out.toByteArray();
+                        ByteBuffer buf = ByteBuffer.wrap(data);
+
+                        System.out.println("rdb read...");
+                        // header
+                        byte[] header = new byte[9];
+                        buf.get(header);
+                        System.out.println("title: " + new String(header));
+                        // opcode
+                        byte opcode = buf.get();
+                        System.out.println("opcode: " + opcode);
+                        // dbindex
+                        byte dbindex = buf.get();
+                        System.out.println("dbindex: " + dbindex);
+                        // 类型
+                        byte type = buf.get();   // 00 (string)
+                        System.out.println("type: " + type);
+                        // key 长度
+                        int keyLen = buf.get();
+                        System.out.println("keyLen: " + keyLen);
+                        // key
+                        byte[] key = new byte[keyLen];
+                        buf.get(key);
+                        System.out.println("key: " + new String(key));
+                        // val 长度
+                        int valLen = buf.get();
+                        System.out.println("valLen: " + valLen);
+                        // val
+                        byte[] val = new byte[valLen];
+                        buf.get(val);
+                        System.out.println("val: " + new String(val));
+
+                        map.put(new String(key), new String(val));
+
+                    } catch (Exception e) {
+                        System.out.println("Error opening file: " + e.getLocalizedMessage());
+                    }
+                } else {
+                    System.out.println("load RDB file : not founded");
+                }
+            }
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
