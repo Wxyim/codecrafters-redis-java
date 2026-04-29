@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -280,56 +281,75 @@ public class Main {
                         byte op = buf.get();
 
                         while ((op & 0xFF) == 0xFA) {
-                            byte nxt = buf.get();
-                            if (((nxt & 0xFF) >> 6) == 0) {
-                                System.out.println("metadata: " + nxt);
-                            } else if (((nxt & 0xFF) >> 6) == 0x01) {
-                                byte nxt1 = buf.get();
-                                System.out.println("metadata: " + nxt1);
-                            } else if (((nxt & 0xFF) >> 6) == 0x10) {
-                                byte[] nxt4 = new byte[4];
-                                buf.get(nxt4);
-                                System.out.println("metadata: " + new String(nxt4, StandardCharsets.UTF_8));
+                            String k = readBuf(buf);
+                            System.out.println("metadata k:" + k);
+                            String v = readBuf(buf);
+                            System.out.println("metadata v:" + v);
+
+                            op = buf.get();
+                        }
+
+                        if ((op & 0xFF) == 0xFE) {
+                            byte dbidx = buf.get();
+                            System.out.println("dbidx: " + dbidx);
+
+                            op = buf.get();
+                        }
+
+                        if ((op & 0xFF) == 0xFB) {
+                            String hashSize = readBuf(buf);
+                            System.out.println("hashSize:" + hashSize);
+                            String expirySize = readBuf(buf);
+                            System.out.println("expirySize:" + expirySize);
+
+                            op = buf.get();
+                        }
+
+                        while ((op & 0xFF) == 0 || (op & 0xFF) == 0xFC || (op & 0xFF) == 0xFD) {
+                            if ((op & 0xFF) == 0) {
+                                String k = readBuf(buf);
+                                System.out.println("data k:" + k);
+                                String v = readBuf(buf);
+                                System.out.println("data v:" + v);
+                                map.put(k, v);
+                            } else if ((op & 0xFF) == 0xFC) {
+                                long timeMills = buf.getLong();
+                                System.out.println("data with timeMills: " + timeMills);
+                                byte oo = buf.get();
+                                if (oo == 0) {
+                                    String k = readBuf(buf);
+                                    System.out.println("data k:" + k);
+                                    String v = readBuf(buf);
+                                    System.out.println("data v:" + v);
+                                    map.put(k, v);
+                                    mapTime.put(k, new Date(timeMills));
+                                } else {
+                                    System.out.println("data has error!");
+                                }
+                            } else if ((op & 0xFF) == 0xFD) {
+                                int timeSecs = buf.getInt();
+                                System.out.println("data with timeSecs: " + timeSecs);
+                                byte oo = buf.get();
+                                if (oo == 0) {
+                                    String k = readBuf(buf);
+                                    System.out.println("data k:" + k);
+                                    String v = readBuf(buf);
+                                    System.out.println("data v:" + v);
+                                    map.put(k, v);
+                                    mapTime.put(k, new Date(timeSecs * 1000L));
+                                } else {
+                                    System.out.println("data has error!");
+                                }
                             }
 
                             op = buf.get();
                         }
                         
-
-                        // metadata
-                        int metadata = buf.get();
-                        System.out.println("metadata: " + metadata);
-
-
-
-                        // opcode
-                        byte opcode = buf.get();
-                        System.out.println("opcode: " + opcode);
-                        // dbindex
-                        byte dbindex = buf.get();
-                        System.out.println("dbindex: " + dbindex);
-
-                        // 类型
-                        byte type = buf.get();   // 00 (string)
-                        System.out.println("type: " + type);
-
-                        // key 长度
-                        int keyLen = buf.get();
-                        System.out.println("keyLen: " + keyLen);
-                        // key
-                        byte[] key = new byte[keyLen];
-                        buf.get(key);
-                        System.out.println("key: " + new String(key));
-
-                        // val 长度
-                        int valLen = buf.get();
-                        System.out.println("valLen: " + valLen);
-                        // val
-                        byte[] val = new byte[valLen];
-                        buf.get(val);
-                        System.out.println("val: " + new String(val));
-
-                        map.put(new String(key), new String(val));
+                        if ((op & 0xFF) == 0xFF) {
+                            byte[] crc = new byte[8];
+                            buf.get(crc);
+                            System.out.println("crc: " + new String(crc, StandardCharsets.UTF_8));
+                        }
 
                     } catch (Exception e) {
                         System.out.println("Error opening file: " + e.getLocalizedMessage());
@@ -1374,5 +1394,19 @@ public class Main {
                     + Character.digit(s.charAt(i+1), 16));
         }
         return data;
+    }
+
+    private static String readBuf(ByteBuffer buf) {
+        byte nxt = buf.get();
+        if (((nxt & 0xFF) >> 6) == 0) {
+            return String.valueOf(nxt);
+        } else if (((nxt & 0xFF) >> 6) == 1) {
+            return String.valueOf(buf.get());
+        } else if (((nxt & 0xFF) >> 6) == 2) {
+            byte[] nxt4 = new byte[4];
+            buf.get(nxt4);
+            return new String(nxt4, StandardCharsets.UTF_8);
+        }
+        return null;
     }
 }
