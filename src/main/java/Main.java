@@ -1192,6 +1192,19 @@ public class Main {
                                                     ", replAckMap size: " + replAckMap.size());
                                             printWriter.print(":" + confirmed + "\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("CONFIG")) {
+                                            if (i + 2 < aa.size() && aa.get(i + 1).equalsIgnoreCase("GET")) {
+                                                String name = aa.get(i + 2);
+                                                Object val = argsMap.get(name);
+                                                if (val != null) {
+                                                    printWriter.write("*2\r\n$" + name.length() + "\r\n" + name
+                                                            + "\r\n$" + String.valueOf(val).length() + "\r\n" + val);
+                                                    printWriter.flush();
+                                                } else {
+                                                    printWriter.write("*-1\r\n");
+                                                    printWriter.flush();
+                                                }
+                                            }
                                         }
                                     }
                                 } else {
