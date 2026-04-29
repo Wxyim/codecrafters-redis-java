@@ -270,7 +270,6 @@ public class Main {
 
                         byte[] data = out.toByteArray();
                         ByteBuffer buf = ByteBuffer.wrap(data);
-                        buf.order(ByteOrder.LITTLE_ENDIAN);
 
                         System.out.println("rdb read...");
                         // header
@@ -344,7 +343,7 @@ public class Main {
 
                             op = buf.get();
                         }
-                        
+
                         if ((op & 0xFF) == 0xFF) {
                             byte[] crc = new byte[8];
                             buf.get(crc);
@@ -1397,16 +1396,26 @@ public class Main {
     }
 
     private static String readBuf(ByteBuffer buf) {
-        byte nxt = buf.get();
-        if (((nxt & 0xFF) >> 6) == 0) {
-            return String.valueOf(nxt);
-        } else if (((nxt & 0xFF) >> 6) == 1) {
-            return String.valueOf(buf.get());
-        } else if (((nxt & 0xFF) >> 6) == 2) {
-            byte[] nxt4 = new byte[4];
-            buf.get(nxt4);
-            return new String(nxt4, StandardCharsets.UTF_8);
+        byte firstByte = buf.get();
+        int type = (firstByte & 0xFF) >> 6;
+        int len;
+
+        switch (type) {
+            case 0:  // 6-bit length
+                len = firstByte & 0x3F;
+                break;
+            case 1:  // 14-bit length
+                len = ((firstByte & 0x3F) << 8) | (buf.get() & 0xFF);
+                break;
+            case 2:  // 32-bit length
+                len = buf.getInt();
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown encoding type: " + type);
         }
-        return null;
+
+        byte[] data = new byte[len];
+        buf.get(data);
+        return new String(data, StandardCharsets.UTF_8);
     }
 }
