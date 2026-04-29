@@ -26,7 +26,7 @@ public class Main {
             } else if (args[i].equals("--replicaof")) {
                 argsMap.put("replicaof", args[i + 1]);
                 isReplica.set(true);
-            } else {
+            } else if (args[i].startsWith("--")) {
                 argsMap.put(args[i].substring(2), args[i + 1]);
             }
         }
