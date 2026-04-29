@@ -1198,6 +1198,7 @@ public class Main {
                                             if (i + 2 < aa.size() && aa.get(i + 1).equalsIgnoreCase("GET")) {
                                                 String name = aa.get(i + 2);
                                                 Object val = argsMap.get(name);
+                                                System.out.println("DEBUG: CONFIG GET - name: " + name + ", val: " + val);
                                                 if (val != null) {
                                                     printWriter.write("*2\r\n$" + name.length() + "\r\n" + name
                                                             + "\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
