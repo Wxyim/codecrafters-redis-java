@@ -296,58 +296,68 @@ public class Main {
                         }
 
                         if ((op & 0xFF) == 0xFB) {
-                            String hashSize = readBuf(buf);
+                            int hashSize = readLenAsInt(buf);
                             System.out.println("hashSize:" + hashSize);
-                            String expirySize = readBuf(buf);
+                            int expirySize = readLenAsInt(buf);
                             System.out.println("expirySize:" + expirySize);
 
                             op = buf.get();
                         }
 
-                        while ((op & 0xFF) == 0 || (op & 0xFF) == 0xFC || (op & 0xFF) == 0xFD) {
-                            if ((op & 0xFF) == 0) {
+                        // 数据解析循环也需要检查条件
+                        while (op != (byte) 0xFF) {  // 0xFF 是 end marker
+                            if ((op & 0xFF) == 0) {  // String type key-value
                                 String k = readBuf(buf);
                                 System.out.println("data k:" + k);
                                 String v = readBuf(buf);
                                 System.out.println("data v:" + v);
                                 map.put(k, v);
-                            } else if ((op & 0xFF) == 0xFC) {
+                            } else if ((op & 0xFF) == 0xFC) {  // Expire time in milliseconds
                                 long timeMills = buf.getLong();
                                 System.out.println("data with timeMills: " + timeMills);
-                                byte oo = buf.get();
-                                if (oo == 0) {
+                                byte valueType = buf.get();  // value type, usually 0 for string
+                                if (valueType == 0) {
                                     String k = readBuf(buf);
                                     System.out.println("data k:" + k);
                                     String v = readBuf(buf);
                                     System.out.println("data v:" + v);
                                     map.put(k, v);
                                     mapTime.put(k, new Date(timeMills));
-                                } else {
-                                    System.out.println("data has error!");
                                 }
-                            } else if ((op & 0xFF) == 0xFD) {
+                            } else if ((op & 0xFF) == 0xFD) {  // Expire time in seconds
                                 int timeSecs = buf.getInt();
                                 System.out.println("data with timeSecs: " + timeSecs);
-                                byte oo = buf.get();
-                                if (oo == 0) {
+                                byte valueType = buf.get();
+                                if (valueType == 0) {
                                     String k = readBuf(buf);
                                     System.out.println("data k:" + k);
                                     String v = readBuf(buf);
                                     System.out.println("data v:" + v);
                                     map.put(k, v);
                                     mapTime.put(k, new Date(timeSecs * 1000L));
-                                } else {
-                                    System.out.println("data has error!");
                                 }
+                            } else if ((op & 0xFF) == 0xFA) {
+                                // Metadata section (shouldn't appear here, but handle it)
+                                String k = readBuf(buf);
+                                String v = readBuf(buf);
+                            } else {
+                                System.out.println("Unknown op code: " + String.format("0x%02X", op & 0xFF));
+                                break;
                             }
 
-                            op = buf.get();
+                            try {
+                                op = buf.get();
+                            } catch (Exception e) {
+                                break;  // End of buffer
+                            }
                         }
 
                         if ((op & 0xFF) == 0xFF) {
                             byte[] crc = new byte[8];
-                            buf.get(crc);
-                            System.out.println("crc: " + new String(crc, StandardCharsets.UTF_8));
+                            if (buf.remaining() >= 8) {
+                                buf.get(crc);
+                                System.out.println("crc: " + Arrays.toString(crc));
+                            }
                         }
 
                     } catch (Exception e) {
