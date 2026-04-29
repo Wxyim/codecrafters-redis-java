@@ -254,8 +254,8 @@ public class Main {
             AtomicLong commandEndOffset = new AtomicLong();
 
             // 加载 rdb
-            if (argsMap.containsKey("dir") && argsMap.containsKey("rdbfilename")) {
-                File file = new File(argsMap.get("dir") + "/" + argsMap.get("rdbfilename"));
+            if (argsMap.containsKey("dir") && argsMap.containsKey("dbfilename")) {
+                File file = new File(argsMap.get("dir") + "/" + argsMap.get("dbfilename"));
                 if (file.isFile()) {
                     try (InputStream is = new FileInputStream(file);
                          ByteArrayOutputStream out = new ByteArrayOutputStream()) {
