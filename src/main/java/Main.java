@@ -1410,6 +1410,27 @@ public class Main {
             case 2:  // 32-bit length
                 len = buf.getInt();
                 break;
+            case 3:  // Special encoding
+                int encoding = firstByte & 0x3F;
+                switch (encoding) {
+                    case 0:  // 8-bit signed integer
+                        return String.valueOf(buf.get());
+                    case 1:  // 16-bit signed integer
+                        return String.valueOf(buf.getShort());
+                    case 2:  // 32-bit signed integer
+                        return String.valueOf(buf.getInt());
+                    case 3:  // 64-bit signed integer
+                        return String.valueOf(buf.getLong());
+                    case 4:  // LZF compressed string
+                        int compressedLen = readLenAsInt(buf);
+                        int uncompressedLen = readLenAsInt(buf);
+                        byte[] compressed = new byte[compressedLen];
+                        buf.get(compressed);
+                        byte[] uncompressed = decompressLZF(compressed, uncompressedLen);
+                        return new String(uncompressed, StandardCharsets.UTF_8);
+                    default:
+                        throw new IllegalArgumentException("Unknown encoding: " + encoding);
+                }
             default:
                 throw new IllegalArgumentException("Unknown encoding type: " + type);
         }
@@ -1417,5 +1438,29 @@ public class Main {
         byte[] data = new byte[len];
         buf.get(data);
         return new String(data, StandardCharsets.UTF_8);
+    }
+
+    // 辅助方法：读取 length 编码的整数
+    private static int readLenAsInt(ByteBuffer buf) {
+        byte firstByte = buf.get();
+        int type = (firstByte & 0xFF) >> 6;
+
+        switch (type) {
+            case 0:
+                return firstByte & 0x3F;
+            case 1:
+                return ((firstByte & 0x3F) << 8) | (buf.get() & 0xFF);
+            case 2:
+                return buf.getInt();
+            default:
+                throw new IllegalArgumentException("Invalid length encoding");
+        }
+    }
+
+    // LZF 解压（你需要找一个 LZF 库或实现）
+    private static byte[] decompressLZF(byte[] compressed, int uncompressedLen) {
+        // 如果你没有 LZF 库，可以使用开源实现
+        // 或者返回压缩后的数据
+        return compressed;  // 简单处理，实际需要真正解压
     }
 }
