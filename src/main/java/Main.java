@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
@@ -268,21 +269,50 @@ public class Main {
 
                         byte[] data = out.toByteArray();
                         ByteBuffer buf = ByteBuffer.wrap(data);
+                        buf.order(ByteOrder.LITTLE_ENDIAN);
 
                         System.out.println("rdb read...");
                         // header
                         byte[] header = new byte[9];
                         buf.get(header);
-                        System.out.println("title: " + new String(header));
+                        System.out.println("header: " + new String(header, StandardCharsets.UTF_8));
+
+                        byte op = buf.get();
+
+                        while ((op & 0xFF) == 0xFA) {
+                            byte nxt = buf.get();
+                            if (((nxt & 0xFF) >> 6) == 0) {
+                                System.out.println("metadata: " + nxt);
+                            } else if (((nxt & 0xFF) >> 6) == 0x01) {
+                                byte nxt1 = buf.get();
+                                System.out.println("metadata: " + nxt1);
+                            } else if (((nxt & 0xFF) >> 6) == 0x10) {
+                                byte[] nxt4 = new byte[4];
+                                buf.get(nxt4);
+                                System.out.println("metadata: " + new String(nxt4, StandardCharsets.UTF_8));
+                            }
+
+                            op = buf.get();
+                        }
+                        
+
+                        // metadata
+                        int metadata = buf.get();
+                        System.out.println("metadata: " + metadata);
+
+
+
                         // opcode
                         byte opcode = buf.get();
                         System.out.println("opcode: " + opcode);
                         // dbindex
                         byte dbindex = buf.get();
                         System.out.println("dbindex: " + dbindex);
+
                         // 类型
                         byte type = buf.get();   // 00 (string)
                         System.out.println("type: " + type);
+
                         // key 长度
                         int keyLen = buf.get();
                         System.out.println("keyLen: " + keyLen);
@@ -290,6 +320,7 @@ public class Main {
                         byte[] key = new byte[keyLen];
                         buf.get(key);
                         System.out.println("key: " + new String(key));
+
                         // val 长度
                         int valLen = buf.get();
                         System.out.println("valLen: " + valLen);
