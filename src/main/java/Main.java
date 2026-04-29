@@ -1209,6 +1209,8 @@ public class Main {
                                                     printWriter.write("*0\r\n");
                                                     printWriter.flush();
                                                 }
+                                                // 处理完了显示跳出 避免第二个参数 GET 当成 command
+                                                break;
                                             }
                                         }
                                     }
