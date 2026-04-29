@@ -1212,6 +1212,19 @@ public class Main {
                                                 // 处理完了显示跳出 避免第二个参数 GET 当成 command
                                                 break;
                                             }
+                                        } else if (aa.get(i).equalsIgnoreCase("KEYS")) {
+                                            String pattern = aa.get(i + 1).substring(0, aa.get(i + 1).indexOf("*"));
+                                            StringBuilder sb = new StringBuilder();
+                                            int n = 0;
+                                            for (String key : map.keySet()) {
+                                                if (pattern.isEmpty() || key.startsWith(pattern)) {
+                                                    sb.append("$").append(key.length()).append("\r\n").append(key).append("\r\n");
+                                                    n++;
+                                                }
+                                            }
+                                            sb.insert(0, "*" + n + "\r\n");
+                                            printWriter.write(sb.toString());
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
