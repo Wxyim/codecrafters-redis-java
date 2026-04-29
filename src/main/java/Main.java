@@ -313,7 +313,9 @@ public class Main {
                                 System.out.println("data v:" + v);
                                 map.put(k, v);
                             } else if ((op & 0xFF) == 0xFC) {  // Expire time in milliseconds
+                                buf.order(ByteOrder.LITTLE_ENDIAN);
                                 long timeMills = buf.getLong();
+                                buf.order(ByteOrder.BIG_ENDIAN);
                                 System.out.println("data with timeMills: " + timeMills);
                                 byte valueType = buf.get();  // value type, usually 0 for string
                                 if (valueType == 0) {
@@ -325,7 +327,9 @@ public class Main {
                                     mapTime.put(k, new Date(timeMills));
                                 }
                             } else if ((op & 0xFF) == 0xFD) {  // Expire time in seconds
+                                buf.order(ByteOrder.LITTLE_ENDIAN);
                                 int timeSecs = buf.getInt();
+                                buf.order(ByteOrder.BIG_ENDIAN);
                                 System.out.println("data with timeSecs: " + timeSecs);
                                 byte valueType = buf.get();
                                 if (valueType == 0) {
