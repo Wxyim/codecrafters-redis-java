@@ -1200,11 +1200,13 @@ public class Main {
                                                 Object val = argsMap.get(name);
                                                 System.out.println("DEBUG: CONFIG GET - name: " + name + ", val: " + val);
                                                 if (val != null) {
-                                                    printWriter.write("*2\r\n$" + name.length() + "\r\n" + name
-                                                            + "\r\n$" + String.valueOf(val).length() + "\r\n" + val + "\r\n");
+                                                    String response = "*2\r\n" +
+                                                            "$" + name.length() + "\r\n" + name + "\r\n" +
+                                                            "$" + String.valueOf(val).length() + "\r\n" + val + "\r\n";
+                                                    printWriter.write(response);
                                                     printWriter.flush();
                                                 } else {
-                                                    printWriter.write("*-1\r\n");
+                                                    printWriter.write("*0\r\n");
                                                     printWriter.flush();
                                                 }
                                             }
