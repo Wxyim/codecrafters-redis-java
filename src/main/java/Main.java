@@ -1601,6 +1601,12 @@ public class Main {
                                                 }
                                             }
                                             printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("ACL")) {
+                                            String key = aa.get(i + 1);
+                                            if (key.equalsIgnoreCase("WHOAMI")) {
+                                                printWriter.print("default");
+                                                printWriter.flush();
+                                            }
                                         }
                                     }
                                 } else {
