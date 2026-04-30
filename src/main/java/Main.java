@@ -1474,6 +1474,9 @@ public class Main {
                                                     alreadyExists = true;
                                                 }
                                             }
+                                            if (!alreadyExists) {
+                                                set.add(new NSEntry(value, score));
+                                            }
 
                                             printWriter.print(":" + (alreadyExists ? 0 : 1) + "\r\n");
                                             printWriter.flush();
