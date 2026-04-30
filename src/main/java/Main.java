@@ -264,7 +264,7 @@ public class Main {
 
             Lock subLock = new ReentrantLock(true);
 
-            Map<String, PriorityQueue<Map<String, Object>>> zaddMap = new ConcurrentHashMap<>();
+            Map<String, TreeSet<NSEntry>> zaddMap = new ConcurrentHashMap<>();
 
             // 加载 rdb
             if (argsMap.containsKey("dir") && argsMap.containsKey("dbfilename")) {
@@ -1450,16 +1450,16 @@ public class Main {
                                             Double score = Double.valueOf(aa.get(i + 2));
                                             String value = aa.get(i + 3);
 
-                                            PriorityQueue<Map<String, Object>> queue = zaddMap.computeIfAbsent(setName, k -> new PriorityQueue<Map<String, Object>>(new Comparator<Map<String, Object>>() {
+                                            TreeSet<NSEntry> set = zaddMap.computeIfAbsent(setName, k -> new TreeSet<NSEntry>(new Comparator<NSEntry>() {
                                                 @Override
-                                                public int compare(Map<String, Object> o1, Map<String, Object> o2) {
-                                                    if ((Double) o1.get("score") < (Double) o2.get("score")) {
+                                                public int compare(NSEntry o1, NSEntry o2) {
+                                                    if (o1.getScore() < o2.getScore()) {
                                                         return -1;
-                                                    } else if ((Double) o1.get("score") > (Double) o2.get("score")) {
+                                                    } else if (o1.getScore() > o2.getScore()) {
                                                         return 1;
-                                                    } else if (new StringBuilder((String) o1.get("value")).compareTo(new StringBuilder((String) o2.get("value"))) < 0) {
+                                                    } else if (o1.getName().compareTo(o2.getName()) < 0) {
                                                         return -1;
-                                                    } else if (new StringBuilder((String) o1.get("value")).compareTo(new StringBuilder((String) o2.get("value"))) > 0) {
+                                                    } else if (o1.getName().compareTo(o2.getName()) > 0) {
                                                         return 1;
                                                     } else {
                                                         return 0;
@@ -1467,43 +1467,30 @@ public class Main {
                                                 }
                                             }));
 
-                                            AtomicBoolean alreadyExists = new AtomicBoolean(false);
-                                            // 先删除旧元素（如果存在）
-                                            Iterator<Map<String, Object>> it = queue.iterator();
-                                            while (it.hasNext()) {
-                                                Map<String, Object> each = it.next();
-                                                if (value.equals(each.get("value"))) {
-                                                    alreadyExists.set(true);
-                                                    it.remove(); // 比 removeIf 更可控
+                                            boolean alreadyExists = false;
+                                            for (NSEntry e : set) {
+                                                if (e.getName().equalsIgnoreCase(value)) {
+                                                    e.setScore(score);
+                                                    alreadyExists = true;
                                                 }
                                             }
 
-                                            queue.add(new HashMap<>() {
-                                                {
-                                                    put("score", score);
-                                                    put("value", value);
-                                                }
-                                            });
-
-                                            printWriter.print(":" + (alreadyExists.get() ? 0 : 1) + "\r\n");
+                                            printWriter.print(":" + (alreadyExists ? 0 : 1) + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equalsIgnoreCase("ZRANK")) {
                                             String setName = aa.get(i + 1);
                                             String value = aa.get(i + 2);
 
-                                            PriorityQueue<Map<String, Object>> queue = zaddMap.getOrDefault(setName, null);
+                                            TreeSet<NSEntry> set = zaddMap.getOrDefault(setName, null);
 
-                                            if (queue == null) {
+                                            if (set == null) {
                                                 printWriter.print("$-1\r\n");
                                             } else {
-                                                // 临时复制一个队列，按顺序取出所有元素
-                                                PriorityQueue<Map<String, Object>> tempQueue = new PriorityQueue<>(queue);
                                                 int rank = 0;
                                                 boolean found = false;
 
-                                                while (!tempQueue.isEmpty()) {
-                                                    Map<String, Object> each = tempQueue.poll();
-                                                    if (each.get("value").equals(value)) {
+                                                for (NSEntry e : set) {
+                                                    if (e.getName().equalsIgnoreCase(value)) {
                                                         found = true;
                                                         break;
                                                     }
@@ -1522,36 +1509,37 @@ public class Main {
                                             int start = Integer.parseInt(aa.get(i + 2));
                                             int stop = Integer.parseInt(aa.get(i + 3));
 
-                                            PriorityQueue<Map<String, Object>> queue = zaddMap.getOrDefault(setName, null);
+                                            TreeSet<NSEntry> set = zaddMap.getOrDefault(setName, null);
 
-                                            if (queue == null) {
+                                            if (set == null) {
                                                 printWriter.print("*0\r\n");
                                             } else {
                                                 if (start < 0) {
-                                                    start = Math.max((start + queue.size()), 0);
+                                                    start = Math.max((start + set.size()), 0);
                                                 }
                                                 if (stop < 0) {
-                                                    stop = Math.max((stop + queue.size()), 0);
+                                                    stop = Math.max((stop + set.size()), 0);
                                                 }
-                                                if (start > queue.size() - 1 || stop < start) {
+                                                if (start > set.size() - 1 || stop < start) {
                                                     printWriter.print("*0\r\n");
                                                     printWriter.flush();
                                                     continue;
                                                 }
-                                                PriorityQueue<Map<String, Object>> maps = new PriorityQueue<>(queue);
-                                                stop = Math.min(stop, queue.size() - 1);
+
+                                                stop = Math.min(stop, set.size() - 1);
                                                 StringBuilder sb = new StringBuilder();
                                                 int n = 0;
                                                 int t = 0;
-                                                while (!maps.isEmpty()) {
-                                                    Map<String, Object> each = maps.poll();
+
+                                                for (NSEntry e : set) {
                                                     if (n >= start && n <= stop) {
-                                                        String value = (String) each.get("value");
+                                                        String value = e.getName();
                                                         sb.append("$" + value.length() + "\r\n" + value + "\r\n");
                                                         t++;
                                                     }
                                                     n++;
                                                 }
+
                                                 if (t > 0) {
                                                     sb.insert(0, "*" + t + "\r\n");
                                                 }
@@ -1560,26 +1548,25 @@ public class Main {
                                             printWriter.flush();
                                         } else if (aa.get(i).equalsIgnoreCase("ZCARD")) {
                                             String setName = aa.get(i + 1);
-                                            PriorityQueue<Map<String, Object>> que = zaddMap.getOrDefault(setName, null);
-                                            printWriter.print(":" + (que == null ? 0 : que.size()) + "\r\n");
+                                            TreeSet<NSEntry> set = zaddMap.getOrDefault(setName, null);
+                                            printWriter.print(":" + (set == null ? 0 : set.size()) + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equalsIgnoreCase("ZSCORE")) {
                                             String setName = aa.get(i + 1);
                                             String value = aa.get(i + 2);
-                                            PriorityQueue<Map<String, Object>> que = zaddMap.getOrDefault(setName, null);
-                                            if (que == null) {
+                                            TreeSet<NSEntry> set = zaddMap.getOrDefault(setName, null);
+                                            if (set == null) {
                                                 printWriter.print("$-1\r\n");
                                             } else {
-                                                PriorityQueue<Map<String, Object>> tmp = new PriorityQueue<>(que);
                                                 boolean notExists = false;
-                                                while (!que.isEmpty()) {
-                                                    Map<String, Object> each = que.poll();
-                                                    if (each.get("value").equals(value)) {
-                                                        String score = String.valueOf((Double) each.get("score"));
+                                                int t = 0;
+                                                for (NSEntry e : set) {
+                                                    if (e.getName().equals(value)) {
+                                                        String score = String.valueOf(e.getScore());
                                                         printWriter.print("$" + score.length() + "\r\n" + score + "\r\n");
                                                         break;
                                                     } else {
-                                                        if (que.isEmpty()) {
+                                                        if (t == set.size() - 1) {
                                                             notExists = true;
                                                         }
                                                     }
@@ -1592,15 +1579,13 @@ public class Main {
                                         } else if (aa.get(i).equalsIgnoreCase("ZREM")) {
                                             String setName = aa.get(i + 1);
                                             String value = aa.get(i + 2);
-                                            PriorityQueue<Map<String, Object>> que = zaddMap.getOrDefault(setName, null);
-                                            if (que == null) {
+                                            TreeSet<NSEntry> set = zaddMap.getOrDefault(setName, null);
+                                            if (set == null) {
                                                 printWriter.print(":0\r\n");
                                             } else {
-                                                PriorityQueue<Map<String, Object>> tmp = new PriorityQueue<>(que);
                                                 AtomicBoolean exists = new AtomicBoolean(false);
-                                                // 先删除旧元素（如果存在）
-                                                tmp.removeIf((each) -> {
-                                                    if (value.equals(each.get("value"))) {
+                                                set.removeIf((each) -> {
+                                                    if (value.equals(each.getName())) {
                                                         exists.set(true);
                                                         return true;
                                                     }
@@ -1744,5 +1729,34 @@ public class Main {
         // 如果你没有 LZF 库，可以使用开源实现
         // 或者返回压缩后的数据
         return compressed;  // 简单处理，实际需要真正解压
+    }
+}
+
+class NSEntry {
+    String name;
+    Double score;
+
+    public NSEntry() {
+    }
+
+    public NSEntry(String name, Double score) {
+        this.name = name;
+        this.score = score;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Double getScore() {
+        return score;
+    }
+
+    public void setScore(Double score) {
+        this.score = score;
     }
 }
