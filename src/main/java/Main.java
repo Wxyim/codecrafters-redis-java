@@ -39,6 +39,8 @@ public class Main {
         Map<String, String> replMap = new ConcurrentHashMap<>();
         Map<String, Date> replMapTime = new ConcurrentHashMap<>();
 
+        HashSet<String> subModCommands = new HashSet<>(Arrays.asList("subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ping", "quit"));
+
         if (argsMap.containsKey("replicaof")) {
             String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
             // Replica connection handling — use PushbackInputStream and byte-level RESP parsing
@@ -255,6 +257,8 @@ public class Main {
             Map<String, Long> replAckMap = new ConcurrentHashMap<>();
             AtomicLong commandEndOffset = new AtomicLong();
 
+            Map<String, CopyOnWriteArraySet<String>> subMap = new ConcurrentHashMap<>();
+
             // 加载 rdb
             if (argsMap.containsKey("dir") && argsMap.containsKey("dbfilename")) {
                 File file = new File(argsMap.get("dir") + "/" + argsMap.get("dbfilename"));
@@ -376,6 +380,7 @@ public class Main {
                 Socket clientSocket = serverSocket.accept();
                 clientSocket.setKeepAlive(true);
                 AtomicBoolean isReplicaCli = new AtomicBoolean(false);
+                AtomicBoolean isSubMod = new AtomicBoolean(false);
                 Thread client = new Thread(() -> {
                     try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                          PrintWriter printWriter = new PrintWriter(clientSocket.getOutputStream(), true)) {
@@ -399,6 +404,16 @@ public class Main {
                                     }
 
                                     for (int i = 0; i < aa.size(); i++) {
+
+                                        if (isSubMod.get() && !subModCommands.contains(aa.get(i).toLowerCase())) {
+                                            printWriter.print("-ERR Can't execute " + aa.get(i) + "in subscribed mode" + "\r\n");
+                                            printWriter.flush();
+                                            break;
+                                        } else if (isSubMod.get() && "ping".equalsIgnoreCase(aa.get(i))) {
+                                            printWriter.print("*2\r\n$4\r\nPONG$0\r\n\r\n");
+                                            printWriter.flush();
+                                        }
+
                                         if (aa.get(i).equals("PING")) {
                                             printWriter.print("+PONG" + "\r\n");
                                             printWriter.flush();
@@ -1344,6 +1359,16 @@ public class Main {
                                             }
                                             sb.insert(0, "*" + n + "\r\n");
                                             printWriter.write(sb.toString());
+                                            printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("SUBSCRIBE")) {
+                                            String channelName = aa.get(i + 1);
+                                            CopyOnWriteArraySet<String> subChannelNames = subMap.computeIfAbsent(Thread.currentThread().getName(), k -> new CopyOnWriteArraySet<>());
+                                            subChannelNames.add(channelName);
+                                            isSubMod.set(true);
+                                            printWriter.print("*3\r\n" +
+                                                    "$9\r\nSUBSCRIBE\r\n" +
+                                                    "$" + channelName.length() + "\r\n" + channelName + "\r\n" +
+                                                    ":" + subChannelNames.size() + "\r\n");
                                             printWriter.flush();
                                         }
                                     }
