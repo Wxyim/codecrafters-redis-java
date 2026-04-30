@@ -1604,7 +1604,7 @@ public class Main {
                                         } else if (aa.get(i).equalsIgnoreCase("ACL")) {
                                             String key = aa.get(i + 1);
                                             if (key.equalsIgnoreCase("WHOAMI")) {
-                                                printWriter.print("default");
+                                                printWriter.print("$7\r\ndefault\r\n");
                                                 printWriter.flush();
                                             }
                                         }
