@@ -1484,6 +1484,31 @@ public class Main {
 
                                             printWriter.print(":" + (alreadyExists ? 0 : 1) + "\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("ZRANK")) {
+                                            String setName = aa.get(i + 1);
+                                            String value = aa.get(i + 2);
+
+                                            PriorityQueue<Map<String, Object>> queue = zaddMap.getOrDefault(setName, null);
+                                            int rank = 0;
+                                            if (queue != null) {
+                                                for (Map<String, Object> each : queue) {
+                                                    if (each.get("value").equals(value)) {
+                                                        break;
+                                                    }
+
+                                                    if (rank == queue.size() - 1) {
+                                                        rank = -1;
+                                                    }
+                                                    rank++;
+                                                }
+                                            }
+
+                                            if (queue == null || rank == -1) {
+                                                printWriter.print("$-1\r\n");
+                                            } else {
+                                                printWriter.print(":" + rank + "\r\n");
+                                            }
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
