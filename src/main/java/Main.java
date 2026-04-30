@@ -1693,7 +1693,9 @@ public class Main {
                                                     printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.\r\n");
                                                     printWriter.flush();
                                                 } else {
-                                                    cliAuthMap.put(clientSocket, user);
+                                                    Map<String, UserEntry> currUser = new ConcurrentHashMap<>();
+                                                    currUser.put(username, user);
+                                                    cliAuthMap.put(clientSocket, currUser);
                                                     printWriter.print("+OK\r\n");
                                                     printWriter.flush();
                                                 }
