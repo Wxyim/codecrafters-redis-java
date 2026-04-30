@@ -1643,7 +1643,7 @@ public class Main {
                                                 String password = aa.get(i + 3).substring(1);
                                                 UserEntry user = userEntryMap.get(username);
                                                 if (user != null) {
-                                                    user.setPassword(password);
+                                                    user.setPassword(sha256(password));
                                                     user.getFlags().removeIf(e -> e.equalsIgnoreCase("nopass"));
                                                     userEntryMap.put(username, user);
                                                     printWriter.print("+OK\r\n");
