@@ -1366,7 +1366,7 @@ public class Main {
                                             subChannelNames.add(channelName);
                                             isSubMod.set(true);
                                             printWriter.print("*3\r\n" +
-                                                    "$9\r\nSUBSCRIBE\r\n" +
+                                                    "$9\r\nsubscribe\r\n" +
                                                     "$" + channelName.length() + "\r\n" + channelName + "\r\n" +
                                                     ":" + subChannelNames.size() + "\r\n");
                                             printWriter.flush();
