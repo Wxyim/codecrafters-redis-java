@@ -1593,15 +1593,8 @@ public class Main {
                                             if (set == null) {
                                                 printWriter.print(":0\r\n");
                                             } else {
-                                                AtomicBoolean exists = new AtomicBoolean(false);
-                                                set.removeIf((each) -> {
-                                                    if (value.equals(each.getName())) {
-                                                        exists.set(true);
-                                                        return true;
-                                                    }
-                                                    return false;
-                                                });
-                                                if (exists.get()) {
+                                                boolean exists = set.removeIf(each -> value.equals(each.getName()));
+                                                if (exists) {
                                                     printWriter.print(":1\r\n");
                                                 } else {
                                                     printWriter.print(":0\r\n");
