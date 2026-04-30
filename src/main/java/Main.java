@@ -1693,6 +1693,7 @@ public class Main {
                                                     printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.\r\n");
                                                     printWriter.flush();
                                                 } else {
+                                                    cliAuthMap.put(clientSocket, user);
                                                     printWriter.print("+OK\r\n");
                                                     printWriter.flush();
                                                 }
