@@ -1657,9 +1657,13 @@ public class Main {
                                         } else if (aa.get(i).equalsIgnoreCase("AUTH")) {
                                             String username = aa.get(i + 1);
                                             String password = aa.get(i + 2);
+                                            System.out.println("DEBUG: username - " + username);
+                                            System.out.println("DEBUG: password - " + password);
                                             UserEntry user = userEntryMap.get(username);
                                             if (user != null) {
-                                                if (!sha256(password).equals(user.getPassword())) {
+                                                String encodePass = sha256(password);
+                                                System.out.println("DEBUG: encodePass - " + encodePass);
+                                                if (!encodePass.equals(user.getPassword())) {
                                                     printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.");
                                                 } else {
                                                     printWriter.print("+OK\r\n");
