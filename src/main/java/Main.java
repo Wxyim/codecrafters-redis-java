@@ -1516,6 +1516,35 @@ public class Main {
                                                 }
                                             }
                                             printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("ZRANGE")) {
+                                            String setName = aa.get(i + 1);
+                                            int start = Integer.parseInt(aa.get(i + 2));
+                                            int stop = Integer.parseInt(aa.get(i + 3));
+                                            PriorityQueue<Map<String, Object>> queue = zaddMap.getOrDefault(setName, null);
+
+                                            if (queue == null || start > queue.size() - 1 || stop > start) {
+                                                printWriter.print("*0\r\n");
+                                            } else {
+                                                PriorityQueue<Map<String, Object>> maps = new PriorityQueue<>(queue);
+                                                stop = Math.min(stop, queue.size() - 1);
+                                                StringBuilder sb = new StringBuilder();
+                                                int n = 0;
+                                                int t = 0;
+                                                while (!maps.isEmpty()) {
+                                                    Map<String, Object> each = maps.poll();
+                                                    if (n >= start && n <= stop) {
+                                                        String value = (String) each.get("value");
+                                                        sb.append("$" + value.length() + "\r\n" + value + "\r\n");
+                                                        t++;
+                                                    }
+                                                    n++;
+                                                }
+                                                if (t > 0) {
+                                                    sb.insert(0, "*" + t + "\r\n");
+                                                }
+                                                printWriter.print(sb);
+                                            }
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
