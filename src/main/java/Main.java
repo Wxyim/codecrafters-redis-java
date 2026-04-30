@@ -49,6 +49,8 @@ public class Main {
         defaultUser.setFlags(new ArrayList<>(Arrays.asList("nopass")));
         userEntryMap.put("default", defaultUser);
 
+        Map<Socket, Map<String, UserEntry>> cliAuthMap = new ConcurrentHashMap<>();
+
         if (argsMap.containsKey("replicaof")) {
             String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
             // Replica connection handling — use PushbackInputStream and byte-level RESP parsing
@@ -395,6 +397,13 @@ public class Main {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 clientSocket.setKeepAlive(true);
+
+                if (cliAuthMap.isEmpty() || userEntryMap.get("default").getPassword() == null) {
+                    Map<String, UserEntry> user = new ConcurrentHashMap<>();
+                    user.put("user", defaultUser);
+                    cliAuthMap.put(clientSocket, user);
+                }
+
                 AtomicBoolean isReplicaCli = new AtomicBoolean(false);
                 AtomicBoolean isSubMod = new AtomicBoolean(false);
                 Thread client = new Thread(() -> {
@@ -420,6 +429,13 @@ public class Main {
                                     }
 
                                     for (int i = 0; i < aa.size(); i++) {
+
+                                        Map<String, UserEntry> userMap = cliAuthMap.get(clientSocket);
+                                        if (userMap == null) {
+                                            printWriter.print("-NOAUTH Authentication required.\r\n");
+                                            printWriter.flush();
+                                            break;
+                                        }
 
                                         if (isSubMod.get() && !subModCommands.contains(aa.getFirst().toLowerCase())) {
                                             printWriter.print("-ERR Can't execute '" + aa.get(i).toLowerCase() + "' in subscribed mode" + "\r\n");
@@ -1613,8 +1629,15 @@ public class Main {
                                         } else if (aa.get(i).equalsIgnoreCase("ACL")) {
                                             String key = aa.get(i + 1);
                                             if (key.equalsIgnoreCase("WHOAMI")) {
-                                                printWriter.print("$7\r\ndefault\r\n");
-                                                printWriter.flush();
+                                                Map<String, UserEntry> user = cliAuthMap.get(clientSocket);
+                                                if (user == null) {
+                                                    printWriter.print("-NOAUTH Authentication required.\r\n");
+                                                    printWriter.flush();
+                                                } else {
+                                                    String username = cliAuthMap.get(clientSocket).get("user").getUsername();
+                                                    printWriter.print("$" + username.length() + "\r\n" + username+ "\r\n");
+                                                    printWriter.flush();
+                                                }
                                             } else if (key.equalsIgnoreCase("GETUSER")) {
                                                 String username = aa.get(i + 2);
                                                 UserEntry user = userEntryMap.get(username);
