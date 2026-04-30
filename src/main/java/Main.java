@@ -1557,6 +1557,61 @@ public class Main {
                                                 printWriter.print(sb);
                                             }
                                             printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("ZCARD")) {
+                                            String setName = aa.get(i + 1);
+                                            PriorityQueue<Map<String, Object>> que = zaddMap.getOrDefault(setName, null);
+                                            printWriter.print(":" + (que == null ? 0 : que.size()) + "\r\n");
+                                            printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("ZSCORE")) {
+                                            String setName = aa.get(i + 1);
+                                            String value = aa.get(i + 2);
+                                            PriorityQueue<Map<String, Object>> que = zaddMap.getOrDefault(setName, null);
+                                            if (que == null) {
+                                                printWriter.print("$-1\r\n");
+                                            } else {
+                                                PriorityQueue<Map<String, Object>> tmp = new PriorityQueue<>(que);
+                                                boolean notExists = false;
+                                                while (!que.isEmpty()) {
+                                                    Map<String, Object> each = que.poll();
+                                                    if (each.get("value").equals(value)) {
+                                                        String score = String.valueOf((Double) each.get("score"));
+                                                        printWriter.print("$" + score.length() + "\r\n" + score + "\r\n");
+                                                        break;
+                                                    } else {
+                                                        if (que.isEmpty()) {
+                                                            notExists = true;
+                                                        }
+                                                    }
+                                                }
+                                                if (notExists) {
+                                                    printWriter.print("$-1\r\n");
+                                                }
+                                            }
+                                            printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("ZREM")) {
+                                            String setName = aa.get(i + 1);
+                                            String value = aa.get(i + 2);
+                                            PriorityQueue<Map<String, Object>> que = zaddMap.getOrDefault(setName, null);
+                                            if (que == null) {
+                                                printWriter.print(":0\r\n");
+                                            } else {
+                                                PriorityQueue<Map<String, Object>> tmp = new PriorityQueue<>(que);
+                                                AtomicBoolean exists = new AtomicBoolean(false);
+                                                // 先删除旧元素（如果存在）
+                                                tmp.removeIf((each) -> {
+                                                    if (value.equals(each.get("value"))) {
+                                                        exists.set(true);
+                                                        return true;
+                                                    }
+                                                    return false;
+                                                });
+                                                if (exists.get()) {
+                                                    printWriter.print(":1\r\n");
+                                                } else {
+                                                    printWriter.print(":0\r\n");
+                                                }
+                                            }
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
