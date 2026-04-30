@@ -265,6 +265,8 @@ public class Main {
 
             Lock subLock = new ReentrantLock(true);
 
+            Map<String, PriorityQueue<Map<String, Object>>> zaddMap = new ConcurrentHashMap<>();
+
             // 加载 rdb
             if (argsMap.containsKey("dir") && argsMap.containsKey("dbfilename")) {
                 File file = new File(argsMap.get("dir") + "/" + argsMap.get("dbfilename"));
@@ -1444,6 +1446,44 @@ public class Main {
                                                     }
                                                 });
                                             }
+                                        } else if (aa.get(i).equalsIgnoreCase("ZADD")) {
+                                            String setName = aa.get(i + 1);
+                                            Double score = Double.valueOf(aa.get(i + 2));
+                                            String value = aa.get(i + 3);
+
+                                            PriorityQueue<Map<String, Object>> queue = zaddMap.computeIfAbsent(setName, k -> new PriorityQueue<Map<String, Object>>(new Comparator<Map<String, Object>>() {
+                                                @Override
+                                                public int compare(Map<String, Object> o1, Map<String, Object> o2) {
+                                                    if ((Double) o1.get("score") < (Double) o2.get("score")) {
+                                                        return -1;
+                                                    } else if ((Double) o1.get("score") > (Double) o2.get("score")) {
+                                                        return 1;
+                                                    } else if (new StringBuilder((String) o1.get("value")).compareTo(new StringBuilder((String) o2.get("value"))) < 0) {
+                                                        return -1;
+                                                    } else if (new StringBuilder((String) o1.get("value")).compareTo(new StringBuilder((String) o2.get("value"))) > 0) {
+                                                        return 1;
+                                                    } else {
+                                                        return 0;
+                                                    }
+                                                }
+                                            }));
+
+                                            boolean alreadyExists = false;
+                                            for (Map<String, Object> each : queue) {
+                                                if (value.equals(each.get("value"))) {
+                                                    alreadyExists = true;
+                                                }
+                                            }
+
+                                            queue.add(new HashMap<>() {
+                                                {
+                                                    put("score", score);
+                                                    put("value", value);
+                                                }
+                                            });
+
+                                            printWriter.print(":" + (alreadyExists ? 0 : 1) + "\r\n");
+                                            printWriter.flush();
                                         }
                                     }
                                 } else {
