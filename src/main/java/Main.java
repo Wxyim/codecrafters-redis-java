@@ -406,7 +406,7 @@ public class Main {
                                     for (int i = 0; i < aa.size(); i++) {
 
                                         if (isSubMod.get() && !subModCommands.contains(aa.getFirst().toLowerCase())) {
-                                            printWriter.print("-ERR Can't execute " + aa.get(i) + " in subscribed mode" + "\r\n");
+                                            printWriter.print("-ERR Can't execute '" + aa.get(i).toLowerCase() + "' in subscribed mode" + "\r\n");
                                             printWriter.flush();
                                             break;
                                         } else if (isSubMod.get() && "ping".equalsIgnoreCase(aa.getFirst())) {
