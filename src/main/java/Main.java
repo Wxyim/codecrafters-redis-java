@@ -1468,13 +1468,20 @@ public class Main {
                                             }));
 
                                             boolean alreadyExists = false;
+                                            NSEntry target = null;
                                             for (NSEntry e : set) {
                                                 if (e.getName().equalsIgnoreCase(value)) {
-                                                    e.setScore(score);
-                                                    alreadyExists = true;
+                                                    target = e;
+                                                    break;
                                                 }
                                             }
-                                            if (!alreadyExists) {
+
+                                            if (target != null) {
+                                                set.remove(target);        // 先移除旧位置
+                                                target.setScore(score);    // 修改
+                                                set.add(target);           // 重新插入（触发排序）
+                                                alreadyExists = true;
+                                            } else {
                                                 set.add(new NSEntry(value, score));
                                             }
 
