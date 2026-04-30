@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -1468,12 +1467,15 @@ public class Main {
                                                 }
                                             }));
 
-                                            boolean alreadyExists = false;
-                                            for (Map<String, Object> each : queue) {
+                                            AtomicBoolean alreadyExists = new AtomicBoolean(false);
+                                            // 先删除旧元素（如果存在）
+                                            queue.removeIf((each) -> {
                                                 if (value.equals(each.get("value"))) {
-                                                    alreadyExists = true;
+                                                    alreadyExists.set(true);
+                                                    return true;
                                                 }
-                                            }
+                                                return false;
+                                            });
 
                                             queue.add(new HashMap<>() {
                                                 {
@@ -1482,31 +1484,36 @@ public class Main {
                                                 }
                                             });
 
-                                            printWriter.print(":" + (alreadyExists ? 0 : 1) + "\r\n");
+                                            printWriter.print(":" + (alreadyExists.get() ? 0 : 1) + "\r\n");
                                             printWriter.flush();
                                         } else if (aa.get(i).equalsIgnoreCase("ZRANK")) {
                                             String setName = aa.get(i + 1);
                                             String value = aa.get(i + 2);
 
                                             PriorityQueue<Map<String, Object>> queue = zaddMap.getOrDefault(setName, null);
-                                            int rank = 0;
-                                            if (queue != null) {
-                                                for (Map<String, Object> each : queue) {
-                                                    if (each.get("value").equals(value)) {
-                                                        break;
-                                                    }
 
-                                                    if (rank == queue.size() - 1) {
-                                                        rank = -1;
+                                            if (queue == null) {
+                                                printWriter.print("$-1\r\n");
+                                            } else {
+                                                // 临时复制一个队列，按顺序取出所有元素
+                                                PriorityQueue<Map<String, Object>> tempQueue = new PriorityQueue<>(queue);
+                                                int rank = 0;
+                                                boolean found = false;
+
+                                                while (!tempQueue.isEmpty()) {
+                                                    Map<String, Object> each = tempQueue.poll();
+                                                    if (each.get("value").equals(value)) {
+                                                        found = true;
+                                                        break;
                                                     }
                                                     rank++;
                                                 }
-                                            }
 
-                                            if (queue == null || rank == -1) {
-                                                printWriter.print("$-1\r\n");
-                                            } else {
-                                                printWriter.print(":" + rank + "\r\n");
+                                                if (found) {
+                                                    printWriter.print(":" + rank + "\r\n");
+                                                } else {
+                                                    printWriter.print("$-1\r\n");
+                                                }
                                             }
                                             printWriter.flush();
                                         }
