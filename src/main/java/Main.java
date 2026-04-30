@@ -4,6 +4,8 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,6 +41,12 @@ public class Main {
         Map<String, Date> replMapTime = new ConcurrentHashMap<>();
 
         HashSet<String> subModCommands = new HashSet<>(Arrays.asList("subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ping", "quit"));
+
+        Map<String, UserEntry> userEntryMap = new ConcurrentHashMap<>();
+        UserEntry defaultUser = new UserEntry();
+        defaultUser.setUsername("default");
+        defaultUser.setFlags(new ArrayList<>(Arrays.asList("nopass")));
+        userEntryMap.put("default", defaultUser);
 
         if (argsMap.containsKey("replicaof")) {
             String[] mainHost = ((String) argsMap.get("replicaof")).split(" ");
@@ -1608,13 +1616,41 @@ public class Main {
                                                 printWriter.flush();
                                             } else if (key.equalsIgnoreCase("GETUSER")) {
                                                 String username = aa.get(i + 2);
-                                                if (username.equalsIgnoreCase("default")) {
+                                                UserEntry user = userEntryMap.get(username);
+
+                                                if (user != null) {
+                                                    int flagsSize = user.getFlags().size();
+                                                    StringBuilder sb = new StringBuilder();
+                                                    if (flagsSize != 0) {
+                                                        for (int j = 0; j < flagsSize; j++) {
+                                                            sb.append("$" + user.getFlags().get(j).length() + "\r\n" + user.getFlags().get(j) + "\r\n");
+                                                        }
+                                                    }
                                                     printWriter.print("*4\r\n" +
                                                             "$5\r\nflags\r\n" +
-                                                            "*1\r\n" +
-                                                            "$6\r\nnopass\r\n" +
+                                                            "*" + flagsSize + "\r\n" +
+                                                            (flagsSize == 0 ? "" : sb.toString()) +
                                                             "$9\r\npasswords\r\n" +
-                                                            "*0\r\n");
+                                                            (user.getPassword() == null ? "*0\r\n" : "*1\r\n" + "$" + user.getPassword().length() + "\r\n" + user.getPassword() + "\r\n"));
+                                                    printWriter.flush();
+                                                } else {
+                                                    // 无用户时的返回值还需查看文档，这里仅占位
+                                                    printWriter.print("-no user: " + username + "\r\n");
+                                                    printWriter.flush();
+                                                }
+                                            } else if (key.equalsIgnoreCase("SETUSER")) {
+                                                String username = aa.get(i + 2);
+                                                String password = aa.get(i + 3).substring(1);
+                                                UserEntry user = userEntryMap.get(username);
+                                                if (user != null) {
+                                                    user.setPassword(password);
+                                                    user.getFlags().removeIf(e -> e.equalsIgnoreCase("nopass"));
+                                                    userEntryMap.put(username, user);
+                                                    printWriter.print("+OK\r\n");
+                                                    printWriter.flush();
+                                                } else {
+                                                    // 无用户时的返回值还需查看文档，这里仅占位
+                                                    printWriter.print("-no user: " + username + "\r\n");
                                                     printWriter.flush();
                                                 }
                                             }
@@ -1750,6 +1786,21 @@ public class Main {
         // 或者返回压缩后的数据
         return compressed;  // 简单处理，实际需要真正解压
     }
+
+    private static String sha256(String origin) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(origin.getBytes(StandardCharsets.UTF_8));
+
+        // 转16进制
+        StringBuilder hex = new StringBuilder();
+        for (byte b : hash) {
+            String s = Integer.toHexString(0xff & b);
+            if (s.length() == 1) hex.append('0');
+            hex.append(s);
+        }
+
+        return hex.toString();
+    }
 }
 
 class NSEntry {
@@ -1778,5 +1829,45 @@ class NSEntry {
 
     public void setScore(Double score) {
         this.score = score;
+    }
+}
+
+class UserEntry {
+    String username;
+    List<String> flags;
+
+    String password;
+
+    public UserEntry() {
+    }
+
+    public UserEntry(String username, List<String> flags, String password) {
+        this.username = username;
+        this.flags = flags;
+        this.password = password;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public List<String> getFlags() {
+        return flags;
+    }
+
+    public void setFlags(List<String> flags) {
+        this.flags = flags;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
