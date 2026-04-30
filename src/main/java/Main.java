@@ -1522,7 +1522,7 @@ public class Main {
                                             int stop = Integer.parseInt(aa.get(i + 3));
                                             PriorityQueue<Map<String, Object>> queue = zaddMap.getOrDefault(setName, null);
 
-                                            if (queue == null || start > queue.size() - 1 || stop > start) {
+                                            if (queue == null || start > queue.size() - 1 || stop < start) {
                                                 printWriter.print("*0\r\n");
                                             } else {
                                                 PriorityQueue<Map<String, Object>> maps = new PriorityQueue<>(queue);
