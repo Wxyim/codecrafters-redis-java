@@ -43,6 +43,7 @@ public class Main {
         HashSet<String> subModCommands = new HashSet<>(Arrays.asList("subscribe", "unsubscribe", "psubscribe", "punsubscribe", "ping", "quit"));
 
         Map<String, UserEntry> userEntryMap = new ConcurrentHashMap<>();
+        // default user
         UserEntry defaultUser = new UserEntry();
         defaultUser.setUsername("default");
         defaultUser.setFlags(new ArrayList<>(Arrays.asList("nopass")));
@@ -1664,7 +1665,7 @@ public class Main {
                                                 String encodePass = sha256(password);
                                                 System.out.println("DEBUG: encodePass - " + encodePass);
                                                 if (!encodePass.equals(user.getPassword())) {
-                                                    printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.");
+                                                    printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.\r\n");
                                                     printWriter.flush();
                                                 } else {
                                                     printWriter.print("+OK\r\n");
