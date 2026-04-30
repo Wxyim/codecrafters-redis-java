@@ -1653,23 +1653,22 @@ public class Main {
                                                     printWriter.print("-no user: " + username + "\r\n");
                                                     printWriter.flush();
                                                 }
-                                            } else if (key.equalsIgnoreCase("AUTH")) {
-                                                String username = aa.get(i + 1);
-                                                String password = aa.get(i + 2);
-                                                UserEntry user = userEntryMap.get(username);
-                                                if (user != null) {
-                                                    if (!sha256(password).equals(user.getPassword())) {
-                                                        printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.");
-                                                    } else {
-                                                        printWriter.print("+OK\r\n");
-                                                        printWriter.flush();
-                                                        
-                                                    }
+                                            }
+                                        } else if (aa.get(i).equalsIgnoreCase("AUTH")) {
+                                            String username = aa.get(i + 1);
+                                            String password = aa.get(i + 2);
+                                            UserEntry user = userEntryMap.get(username);
+                                            if (user != null) {
+                                                if (!sha256(password).equals(user.getPassword())) {
+                                                    printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.");
                                                 } else {
-                                                    // 无用户时的返回值还需查看文档，这里仅占位
-                                                    printWriter.print("-no user: " + username + "\r\n");
+                                                    printWriter.print("+OK\r\n");
                                                     printWriter.flush();
                                                 }
+                                            } else {
+                                                // 无用户时的返回值还需查看文档，这里仅占位
+                                                printWriter.print("-no user: " + username + "\r\n");
+                                                printWriter.flush();
                                             }
                                         }
                                     }
