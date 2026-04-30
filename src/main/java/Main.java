@@ -1469,13 +1469,14 @@ public class Main {
 
                                             AtomicBoolean alreadyExists = new AtomicBoolean(false);
                                             // 先删除旧元素（如果存在）
-                                            queue.removeIf((each) -> {
+                                            Iterator<Map<String, Object>> it = queue.iterator();
+                                            while (it.hasNext()) {
+                                                Map<String, Object> each = it.next();
                                                 if (value.equals(each.get("value"))) {
                                                     alreadyExists.set(true);
-                                                    return true;
+                                                    it.remove(); // 比 removeIf 更可控
                                                 }
-                                                return false;
-                                            });
+                                            }
 
                                             queue.add(new HashMap<>() {
                                                 {
