@@ -432,9 +432,11 @@ public class Main {
 
                                         Map<String, UserEntry> userMap = cliAuthMap.get(clientSocket);
                                         if (userMap == null) {
-                                            printWriter.print("-NOAUTH Authentication required.\r\n");
-                                            printWriter.flush();
-                                            break;
+                                            if (!aa.get(i).equalsIgnoreCase("AUTH")) {
+                                                printWriter.print("-NOAUTH Authentication required.\r\n");
+                                                printWriter.flush();
+                                                break;
+                                            }
                                         }
 
                                         if (isSubMod.get() && !subModCommands.contains(aa.getFirst().toLowerCase())) {
