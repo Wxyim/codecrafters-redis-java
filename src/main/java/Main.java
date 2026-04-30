@@ -405,13 +405,14 @@ public class Main {
 
                                     for (int i = 0; i < aa.size(); i++) {
 
-                                        if (isSubMod.get() && !subModCommands.contains(aa.get(i).toLowerCase())) {
-                                            printWriter.print("-ERR Can't execute " + aa.get(i) + "in subscribed mode" + "\r\n");
+                                        if (isSubMod.get() && !subModCommands.contains(aa.getFirst().toLowerCase())) {
+                                            printWriter.print("-ERR Can't execute " + aa.get(i) + " in subscribed mode" + "\r\n");
                                             printWriter.flush();
                                             break;
-                                        } else if (isSubMod.get() && "ping".equalsIgnoreCase(aa.get(i))) {
+                                        } else if (isSubMod.get() && "ping".equalsIgnoreCase(aa.getFirst())) {
                                             printWriter.print("*2\r\n$4\r\nPONG$0\r\n\r\n");
                                             printWriter.flush();
+                                            break;
                                         }
 
                                         if (aa.get(i).equals("PING")) {
