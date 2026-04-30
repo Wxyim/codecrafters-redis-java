@@ -1665,6 +1665,7 @@ public class Main {
                                                 System.out.println("DEBUG: encodePass - " + encodePass);
                                                 if (!encodePass.equals(user.getPassword())) {
                                                     printWriter.print("-WRONGPASS invalid username-password pair or user is disabled.");
+                                                    printWriter.flush();
                                                 } else {
                                                     printWriter.print("+OK\r\n");
                                                     printWriter.flush();
