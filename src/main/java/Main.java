@@ -257,7 +257,13 @@ public class Main {
             Map<String, Long> replAckMap = new ConcurrentHashMap<>();
             AtomicLong commandEndOffset = new AtomicLong();
 
-            Map<String, CopyOnWriteArraySet<String>> subMap = new ConcurrentHashMap<>();
+            // map<客户端socket, 订阅的主题列表>
+            Map<Socket, CopyOnWriteArraySet<String>> subMap = new ConcurrentHashMap<>();
+
+            // map<客户端socket, 队列<订阅的主题, 内容>>
+            Map<Socket, LinkedBlockingQueue<ConcurrentHashMap<String, String>>> subRevMap = new ConcurrentHashMap<>();
+
+            Lock subLock = new ReentrantLock(true);
 
             // 加载 rdb
             if (argsMap.containsKey("dir") && argsMap.containsKey("dbfilename")) {
@@ -1363,14 +1369,81 @@ public class Main {
                                             printWriter.flush();
                                         } else if (aa.get(i).equalsIgnoreCase("SUBSCRIBE")) {
                                             String channelName = aa.get(i + 1);
-                                            CopyOnWriteArraySet<String> subChannelNames = subMap.computeIfAbsent(Thread.currentThread().getName(), k -> new CopyOnWriteArraySet<>());
+
+                                            CopyOnWriteArraySet<String> subChannelNames = subMap.computeIfAbsent(clientSocket, k -> new CopyOnWriteArraySet<>());
                                             subChannelNames.add(channelName);
-                                            isSubMod.set(true);
-                                            printWriter.print("*3\r\n" +
+
+                                            LinkedBlockingQueue<ConcurrentHashMap<String, String>> queue = subRevMap.computeIfAbsent(clientSocket, k -> new LinkedBlockingQueue<>());
+                                            String resp = "*3\r\n" +
                                                     "$9\r\nsubscribe\r\n" +
                                                     "$" + channelName.length() + "\r\n" + channelName + "\r\n" +
-                                                    ":" + subChannelNames.size() + "\r\n");
+                                                    ":" + subChannelNames.size() + "\r\n";
+                                            queue.add(new ConcurrentHashMap<>() {
+                                                {
+                                                    put("resp", resp);
+                                                }
+                                            });
+
+                                            isSubMod.set(true);
+
+                                            new Thread(() -> {
+                                                while (true) {
+                                                    try {
+                                                        Map<String, String> contentMap = subRevMap.get(clientSocket).take();
+                                                        if (contentMap.containsKey("resp")) {
+                                                            printWriter.write(contentMap.get("resp"));
+                                                        } else {
+                                                            printWriter.write("*3\r\n" +
+                                                                    "$7\r\nmessage\r\n" +
+                                                                    "$" + contentMap.get("channelName").length() + "\r\n" + contentMap.get("channelName") + "\r\n" +
+                                                                    "$" + contentMap.get("value").length() + "\r\n" + contentMap.get("value") + "\r\n");
+                                                        }
+                                                        printWriter.flush();
+                                                    } catch (Exception e) {
+                                                        System.out.println("subscribe handle error: " + e.getLocalizedMessage());
+                                                    }
+                                                }
+                                            }).start();
+                                        } else if (aa.get(i).equalsIgnoreCase("PUBLISH")) {
+                                            String channelName = aa.get(i + 1);
+                                            String value = aa.get(i + 2);
+
+                                            int n = 0;
+                                            for (Map.Entry<Socket, CopyOnWriteArraySet<String>> socketSub : subMap.entrySet()) {
+                                                if (socketSub.getValue().contains(channelName)) {
+                                                    LinkedBlockingQueue<ConcurrentHashMap<String, String>> queue = subRevMap.computeIfAbsent(socketSub.getKey(), k -> new LinkedBlockingQueue<>());
+                                                    queue.add(new ConcurrentHashMap<>() {
+                                                        {
+                                                            put("channelName", channelName);
+                                                            put("value", value);
+                                                        }
+                                                    });
+
+                                                    n++;
+                                                }
+                                            }
+
+                                            printWriter.print(":" + n + "\r\n");
                                             printWriter.flush();
+                                        } else if (aa.get(i).equalsIgnoreCase("UNSUBSCRIBE")) {
+                                            String channelName = aa.get(i + 1);
+
+                                            CopyOnWriteArraySet<String> subChannelNames = subMap.getOrDefault(clientSocket, null);
+                                            if (subChannelNames != null && subChannelNames.contains(channelName)) {
+                                                subChannelNames.remove(channelName);
+                                                subMap.put(clientSocket, subChannelNames);
+
+                                                LinkedBlockingQueue<ConcurrentHashMap<String, String>> queue = subRevMap.computeIfAbsent(clientSocket, k -> new LinkedBlockingQueue<>());
+                                                String resp = "*3\r\n" +
+                                                        "$11\r\nunsubscribe\r\n" +
+                                                        "$" + channelName.length() + "\r\n" + channelName + "\r\n" +
+                                                        ":" + subChannelNames.size() + "\r\n";
+                                                queue.add(new ConcurrentHashMap<>() {
+                                                    {
+                                                        put("resp", resp);
+                                                    }
+                                                });
+                                            }
                                         }
                                     }
                                 } else {
