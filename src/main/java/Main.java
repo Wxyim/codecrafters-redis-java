@@ -410,7 +410,7 @@ public class Main {
                                             printWriter.flush();
                                             break;
                                         } else if (isSubMod.get() && "ping".equalsIgnoreCase(aa.getFirst())) {
-                                            printWriter.print("*2\r\n$4\r\nPONG\r\n$0\r\n\r\n");
+                                            printWriter.print("*2\r\n$4\r\npong\r\n$0\r\n\r\n");
                                             printWriter.flush();
                                             break;
                                         }
