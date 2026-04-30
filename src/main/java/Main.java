@@ -1694,7 +1694,7 @@ public class Main {
                                                     printWriter.flush();
                                                 } else {
                                                     Map<String, UserEntry> currUser = new ConcurrentHashMap<>();
-                                                    currUser.put(username, user);
+                                                    currUser.put("user", user);
                                                     cliAuthMap.put(clientSocket, currUser);
                                                     printWriter.print("+OK\r\n");
                                                     printWriter.flush();
