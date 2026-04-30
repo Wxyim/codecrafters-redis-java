@@ -1606,6 +1606,13 @@ public class Main {
                                             if (key.equalsIgnoreCase("WHOAMI")) {
                                                 printWriter.print("$7\r\ndefault\r\n");
                                                 printWriter.flush();
+                                            } else if (key.equalsIgnoreCase("GETUSER")) {
+                                                String username = aa.get(i + 2);
+                                                if (username.equalsIgnoreCase("default")) {
+                                                    printWriter.print("*2\r\n" +
+                                                            "$7\r\ndefault\r\n"
+                                                            + "*0\r\n");
+                                                }
                                             }
                                         }
                                     }
