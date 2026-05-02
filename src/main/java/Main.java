@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -1376,7 +1377,31 @@ public class Main {
                                                     printWriter.write(response);
                                                     printWriter.flush();
                                                 } else {
-                                                    printWriter.write("*0\r\n");
+                                                    // AOF section
+                                                    if (name.equalsIgnoreCase("dir")) {
+                                                        String path = Paths.get("").toAbsolutePath().toString();
+                                                        printWriter.write("*2\r\n" +
+                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
+                                                                "$" + path.length() + "\r\n" + path + "\r\n");
+                                                    } else if (name.equalsIgnoreCase("appendonly")) {
+                                                        printWriter.write("*2\r\n" +
+                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
+                                                                "$2\r\nno\r\n");
+                                                    } else if (name.equalsIgnoreCase("appenddirname")) {
+                                                        printWriter.write("*2\r\n" +
+                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
+                                                                "$13\r\nappendonlydir\r\n");
+                                                    } else if (name.equalsIgnoreCase("appendfilename")) {
+                                                        printWriter.write("*2\r\n" +
+                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
+                                                                "$14\r\nappendonly.aof\r\n");
+                                                    } else if (name.equalsIgnoreCase("appendfsync")) {
+                                                        printWriter.write("*2\r\n" +
+                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
+                                                                "$8\r\neverysec\r\n");
+                                                    } else {
+                                                        printWriter.write("*0\r\n");
+                                                    }
                                                     printWriter.flush();
                                                 }
                                                 // 处理完了显示跳出 避免第二个参数 GET 当成 command
