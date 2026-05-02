@@ -507,6 +507,9 @@ public class Main {
                                 break;
                             }
                         }
+                        if (aa.isEmpty()) {
+                            continue;
+                        }
                         String command = aa.getFirst();
                         if (command.equalsIgnoreCase("set")) {
                             String key = aa.get(1);
