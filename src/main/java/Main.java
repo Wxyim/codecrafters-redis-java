@@ -467,8 +467,8 @@ public class Main {
                 Path manifestFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".manifest");
                 String aofName = "";
                 try (BufferedReader br = Files.newBufferedReader(manifestFilePath)) {
-                    String line = "";
-                    while (!(line = br.readLine()).isEmpty()) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
                         String[] l = line.split(" ");
                         if (l.length == 6 && l[4].equalsIgnoreCase("type") && l[5].equalsIgnoreCase("i")) {
                             aofName = l[1];
@@ -495,7 +495,7 @@ public class Main {
                         List<String> aa = new ArrayList<>();
                         while (n > 0) {
                             line = br.readLine();
-                            if (line.startsWith("$")) {
+                            if (line.startsWith("$") && !line.trim().isEmpty()) {
                                 // 字符串长度
                                 int l = Integer.parseInt(line.substring(1));
                             } else {
@@ -2011,7 +2011,7 @@ public class Main {
         String aofName = "";
         try (BufferedReader br = Files.newBufferedReader(manifestFilePath)) {
             String line = "";
-            while (!(line = br.readLine()).isEmpty()) {
+            while ((line = br.readLine()) != null) {
                 String[] l = line.split(" ");
                 if (l.length == 6 && l[4].equalsIgnoreCase("type") && l[5].equalsIgnoreCase("i")) {
                     aofName = l[1];
