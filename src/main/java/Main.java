@@ -6,6 +6,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -49,9 +50,14 @@ public class Main {
 
         if ("yes".equalsIgnoreCase((String) argsMap.get("appendonly"))) {
             try {
-                Files.createDirectory(Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname")));
+                Path aofDocPath = Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname"));
+                Files.createDirectories(aofDocPath);
+                Path aofFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".1.incr.aof");
+                if (Files.notExists(aofFilePath)) {
+                    Files.createFile(aofFilePath);
+                }
             } catch (IOException e) {
-                System.out.println("创建aof目录 " + argsMap.get("dir") + FileSystems.getDefault().getSeparator() + argsMap.get("appenddirname") + " 失败：" + e.getLocalizedMessage());
+                System.out.println("创建aof目录/文件失败：" + e.getLocalizedMessage());
             }
         }
 
