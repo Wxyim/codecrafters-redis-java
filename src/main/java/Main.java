@@ -495,12 +495,16 @@ public class Main {
                         List<String> aa = new ArrayList<>();
                         while (n > 0) {
                             line = br.readLine();
-                            if (line.startsWith("$") && !line.trim().isEmpty()) {
-                                // 字符串长度
+                            if (line != null && line.startsWith("$")) {
+                                // 1. 解析字符串长度
                                 int l = Integer.parseInt(line.substring(1));
-                            } else {
-                                aa.add(line);
+                                // 2. 读取下一行（这才是真正的字符串内容，哪怕它以 $ 开头也不影响）
+                                String content = br.readLine();
+                                aa.add(content);
                                 n--;
+                            } else {
+                                System.out.println("aof文件有误，找不到字符串长度标志'$'：" + start);
+                                break;
                             }
                         }
                         String command = aa.getFirst();
