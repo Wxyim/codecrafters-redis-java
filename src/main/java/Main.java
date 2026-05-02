@@ -23,7 +23,16 @@ public class Main {
 
         ServerSocket serverSocket = null;
 
+        String path = Paths.get("").toAbsolutePath().toString();
         Map<String, Object> argsMap = new HashMap<>();
+        // 默认配置
+        argsMap.put("port", 6379);
+        argsMap.put("dir" , path);
+        argsMap.put("appendonly" , "no");
+        argsMap.put("appenddirname" , "appendonlydir");
+        argsMap.put("appendfilename" , "appendonly.aof");
+        argsMap.put("appendfsync" , "everysec");
+
         AtomicBoolean isReplica = new AtomicBoolean(false);
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--port")) {
@@ -36,7 +45,7 @@ public class Main {
             }
         }
 
-        int port = argsMap.containsKey("port") ? (int) argsMap.get("port") : 6379;
+        int port = (int) argsMap.get("port");
 
         Map<String, String> replMap = new ConcurrentHashMap<>();
         Map<String, Date> replMapTime = new ConcurrentHashMap<>();
@@ -1377,31 +1386,7 @@ public class Main {
                                                     printWriter.write(response);
                                                     printWriter.flush();
                                                 } else {
-                                                    // AOF section
-                                                    if (name.equalsIgnoreCase("dir")) {
-                                                        String path = Paths.get("").toAbsolutePath().toString();
-                                                        printWriter.write("*2\r\n" +
-                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
-                                                                "$" + path.length() + "\r\n" + path + "\r\n");
-                                                    } else if (name.equalsIgnoreCase("appendonly")) {
-                                                        printWriter.write("*2\r\n" +
-                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
-                                                                "$2\r\nno\r\n");
-                                                    } else if (name.equalsIgnoreCase("appenddirname")) {
-                                                        printWriter.write("*2\r\n" +
-                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
-                                                                "$13\r\nappendonlydir\r\n");
-                                                    } else if (name.equalsIgnoreCase("appendfilename")) {
-                                                        printWriter.write("*2\r\n" +
-                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
-                                                                "$14\r\nappendonly.aof\r\n");
-                                                    } else if (name.equalsIgnoreCase("appendfsync")) {
-                                                        printWriter.write("*2\r\n" +
-                                                                "$" + name.length() + "\r\n" + name + "\r\n" +
-                                                                "$8\r\neverysec\r\n");
-                                                    } else {
-                                                        printWriter.write("*0\r\n");
-                                                    }
+                                                    printWriter.write("*0\r\n");
                                                     printWriter.flush();
                                                 }
                                                 // 处理完了显示跳出 避免第二个参数 GET 当成 command
