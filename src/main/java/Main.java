@@ -56,6 +56,15 @@ public class Main {
                 if (Files.notExists(aofFilePath)) {
                     Files.createFile(aofFilePath);
                 }
+                Path manifestFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".manifest");
+                if (Files.notExists(manifestFilePath)) {
+                    Files.createFile(manifestFilePath);
+                    try (OutputStream os = Files.newOutputStream(manifestFilePath)) {
+                        os.write(("file " + aofFilePath.getFileName().toString() + " seq 1 type 1").getBytes(StandardCharsets.UTF_8));
+                    } catch (IOException e) {
+                        System.out.println("manifest文件写入失败：" + e.getLocalizedMessage());
+                    }
+                }
             } catch (IOException e) {
                 System.out.println("创建aof目录/文件失败：" + e.getLocalizedMessage());
             }
