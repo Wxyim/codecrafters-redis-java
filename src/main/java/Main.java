@@ -4,10 +4,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -21,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class Main {
-    public static void main(String[] args){
+    public static void main(String[] args) {
         System.out.println("Logs from your program will appear here!");
 
         ServerSocket serverSocket = null;
@@ -48,6 +45,9 @@ public class Main {
             }
         }
 
+        LinkedBlockingQueue<String> bakQue = new LinkedBlockingQueue<>();
+
+        boolean manifestAlreadyExits = false;
         if ("yes".equalsIgnoreCase((String) argsMap.get("appendonly"))) {
             try {
                 Path aofDocPath = Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname"));
@@ -60,14 +60,49 @@ public class Main {
                 if (Files.notExists(manifestFilePath)) {
                     Files.createFile(manifestFilePath);
                     try (OutputStream os = Files.newOutputStream(manifestFilePath)) {
-                        os.write(("file " + aofFilePath.getFileName().toString() + " seq 1 type 1").getBytes(StandardCharsets.UTF_8));
+                        os.write(("file " + aofFilePath.getFileName().toString() + " seq 1 type i\r\n").getBytes(StandardCharsets.UTF_8));
                     } catch (IOException e) {
                         System.out.println("manifest文件写入失败：" + e.getLocalizedMessage());
                     }
+                } else {
+                    manifestAlreadyExits = true;
                 }
             } catch (IOException e) {
                 System.out.println("创建aof目录/文件失败：" + e.getLocalizedMessage());
             }
+
+            new Thread(() -> {
+                Path aofDocPath = Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname"));
+                Path manifestFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".manifest");
+                String aofName = "";
+                try (BufferedReader br = Files.newBufferedReader(manifestFilePath)) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        String[] l = line.split(" ");
+                        if (l.length == 6 && l[4].equalsIgnoreCase("type") && l[5].equalsIgnoreCase("i")) {
+                            aofName = l[1];
+                        }
+                    }
+                } catch (IOException e) {
+                    System.out.println("manifest读取异常：" + e.getLocalizedMessage());
+                }
+                while (true) {
+                    try {
+                        String s = bakQue.take();
+                        try (BufferedWriter bw = Files.newBufferedWriter(aofDocPath.resolve(aofName),
+                                StandardCharsets.UTF_8,
+                                StandardOpenOption.CREATE,
+                                StandardOpenOption.APPEND)) {
+                            bw.write(s);
+                            // bw.flush(); // close 时会自动 flush
+                        } catch (Exception e) {
+                            System.out.println("aof文件写入异常：" + e.getLocalizedMessage());
+                        }
+                    } catch (InterruptedException e) {
+                        System.out.println("aof备份队列读取异常：" + e.getLocalizedMessage());
+                    }
+                }
+            }).start();
         }
 
         int port = (int) argsMap.get("port");
@@ -297,7 +332,6 @@ public class Main {
             Map<Socket, LinkedBlockingQueue<String>> clientMap = new ConcurrentHashMap<>();
 
             AtomicInteger replicaCount = new AtomicInteger(0);
-            Map<Socket, Long> replOffsetMap = new ConcurrentHashMap<>();
             AtomicLong lastOffset = new AtomicLong(0);
             Map<String, Long> replAckMap = new ConcurrentHashMap<>();
             AtomicLong commandEndOffset = new AtomicLong();
@@ -307,8 +341,6 @@ public class Main {
 
             // map<客户端socket, 队列<订阅的主题, 内容>>
             Map<Socket, LinkedBlockingQueue<ConcurrentHashMap<String, String>>> subRevMap = new ConcurrentHashMap<>();
-
-            Lock subLock = new ReentrantLock(true);
 
             Map<String, TreeSet<NSEntry>> zaddMap = new ConcurrentHashMap<>();
 
@@ -429,6 +461,76 @@ public class Main {
                 }
             }
 
+            // 加载 aof
+            if (manifestAlreadyExits) {
+                Path aofDocPath = Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname"));
+                Path manifestFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".manifest");
+                String aofName = "";
+                try (BufferedReader br = Files.newBufferedReader(manifestFilePath)) {
+                    String line = "";
+                    while (!(line = br.readLine()).isEmpty()) {
+                        String[] l = line.split(" ");
+                        if (l.length == 6 && l[4].equalsIgnoreCase("type") && l[5].equalsIgnoreCase("i")) {
+                            aofName = l[1];
+                        }
+                    }
+                } catch (IOException e) {
+                    System.out.println("manifest读取异常：" + e.getLocalizedMessage());
+                }
+                Path aofFilePath = aofDocPath.resolve(aofName);
+                try (BufferedReader br = Files.newBufferedReader(aofFilePath)) {
+
+                    while (true) {
+                        String line = br.readLine();
+                        if (line == null) {
+                            System.out.println("aof文件读取完毕！");
+                            break;
+                        }
+                        boolean start = line.startsWith("*");
+                        if (!start) {
+                            System.out.println("aof文件有误，找不到数组开始标志'*'：" + start);
+                            continue;
+                        }
+                        int n = Integer.parseInt(line.substring(1));
+                        List<String> aa = new ArrayList<>();
+                        while (n > 0) {
+                            line = br.readLine();
+                            if (line.startsWith("$")) {
+                                // 字符串长度
+                                int l = Integer.parseInt(line.substring(1));
+                            } else {
+                                aa.add(line);
+                                n--;
+                            }
+                        }
+                        String command = aa.getFirst();
+                        if (command.equalsIgnoreCase("set")) {
+                            String key = aa.get(1);
+                            String value = aa.get(2);
+                            String exType = null;
+                            Long outTime = null;
+                            boolean t = aa.size() > 3;
+                            if (t) {
+                                exType = aa.get(3);
+                                outTime = Long.valueOf(aa.get(4));
+
+                                map.put(key, value);
+                                mapTime.put(key, exType.equalsIgnoreCase("ex")
+                                        ? new Date(System.currentTimeMillis() + outTime * 1000L)
+                                        : new Date(System.currentTimeMillis() + outTime));
+                            } else {
+                                map.put(key, value);
+                            }
+                        }
+                    }
+
+
+                } catch (IOException e) {
+                    System.out.println("aof文件读取异常：" + e.getLocalizedMessage());
+                }
+
+            }
+
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 clientSocket.setKeepAlive(true);
@@ -530,6 +632,15 @@ public class Main {
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add(s);
                                                 }
+
+                                                if ("always".equalsIgnoreCase((String) argsMap.get("appendfsync"))) {
+                                                    Path aofDocPath = Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname"));
+                                                    Path manifestFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".manifest");
+                                                    appendForFile(aofDocPath, manifestFilePath, s);
+                                                } else {
+                                                    // 其实应该保证多客户端同时操作同一个key以及放入aof队列的原子性，需要给key加锁
+                                                    bakQue.add(s);
+                                                }
                                             }
                                             if (!f) {
                                                 for (Map.Entry<String, Map<String, Boolean>> entry : watchMap.entrySet()) {
@@ -549,6 +660,15 @@ public class Main {
 
                                                 for (Map.Entry<Socket, LinkedBlockingQueue<String>> entry : clientMap.entrySet()) {
                                                     entry.getValue().add(s);
+                                                }
+
+                                                if ("always".equalsIgnoreCase((String) argsMap.get("appendfsync"))) {
+                                                    Path aofDocPath = Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname"));
+                                                    Path manifestFilePath = aofDocPath.resolve(argsMap.get("appendfilename") + ".manifest");
+                                                    appendForFile(aofDocPath, manifestFilePath, s);
+                                                } else {
+                                                    // 其实应该保证多客户端同时操作同一个key以及放入aof队列的原子性，需要给key加锁
+                                                    bakQue.add(s);
                                                 }
                                             }
 
@@ -1790,7 +1910,7 @@ public class Main {
             buf.write(b);
         }
         if (b == -1 && buf.size() == 0) return null;
-        return buf.toString("ISO-8859-1");
+        return buf.toString(StandardCharsets.ISO_8859_1);
     }
 
     public static byte[] hexStringToByteArray(String s) {
@@ -1885,6 +2005,30 @@ public class Main {
         }
 
         return hex.toString();
+    }
+
+    private static void appendForFile(Path aofDocPath, Path manifestFilePath, String command) {
+        String aofName = "";
+        try (BufferedReader br = Files.newBufferedReader(manifestFilePath)) {
+            String line = "";
+            while (!(line = br.readLine()).isEmpty()) {
+                String[] l = line.split(" ");
+                if (l.length == 6 && l[4].equalsIgnoreCase("type") && l[5].equalsIgnoreCase("i")) {
+                    aofName = l[1];
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("manifest读取异常：" + e.getLocalizedMessage());
+        }
+        try (BufferedWriter bw = Files.newBufferedWriter(aofDocPath.resolve(aofName),
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND)) {
+            bw.write(command);
+            // bw.flush(); // close 时会自动 flush
+        } catch (IOException e) {
+            System.out.println("aof写入异常：" + e.getLocalizedMessage());
+        }
     }
 }
 
