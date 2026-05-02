@@ -4,6 +4,8 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -42,6 +44,14 @@ public class Main {
                 isReplica.set(true);
             } else if (args[i].startsWith("--")) {
                 argsMap.put(args[i].substring(2), args[i + 1]);
+            }
+        }
+
+        if ("yes".equalsIgnoreCase((String) argsMap.get("appendonly"))) {
+            try {
+                Files.createDirectory(Paths.get((String) argsMap.get("dir"), (String) argsMap.get("appenddirname")));
+            } catch (IOException e) {
+                System.out.println("创建aof目录 " + argsMap.get("dir") + FileSystems.getDefault().getSeparator() + argsMap.get("appenddirname") + " 失败：" + e.getLocalizedMessage());
             }
         }
 
